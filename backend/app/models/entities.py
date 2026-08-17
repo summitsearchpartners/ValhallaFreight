@@ -62,6 +62,8 @@ class Quote(Base):
     options: Mapped[list] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime)
+    requested_pickup_at: Mapped[datetime | None] = mapped_column(DateTime)
+    requested_delivery_at: Mapped[datetime | None] = mapped_column(DateTime)
 
 class Shipment(Base):
     __tablename__ = "shipments"
@@ -82,6 +84,9 @@ class Shipment(Base):
     final_carrier_cost: Mapped[Decimal | None] = mapped_column(Numeric(12,2))
     pickup_date: Mapped[date | None] = mapped_column(Date)
     estimated_delivery: Mapped[date | None] = mapped_column(Date)
+    scheduled_pickup_at: Mapped[datetime | None] = mapped_column(DateTime)
+    requested_delivery_at: Mapped[datetime | None] = mapped_column(DateTime)
+    actual_pickup_at: Mapped[datetime | None] = mapped_column(DateTime)
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     customer = relationship("Customer", back_populates="shipments")

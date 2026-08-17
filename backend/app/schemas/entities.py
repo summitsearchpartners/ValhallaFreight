@@ -1,6 +1,6 @@
 from datetime import datetime, date
 from decimal import Decimal
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from app.schemas.common import ORMModel, Address, HandlingUnit
 
 class CustomerCreate(BaseModel):
@@ -33,6 +33,14 @@ class QuoteRequest(BaseModel):
     destination: Address
     handling_units: list[HandlingUnit]
     accessorials: list[str] = []
+    requested_pickup_at: datetime | None = None
+    requested_delivery_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def validate_schedule(self):
+        if self.requested_pickup_at and self.requested_delivery_at and self.requested_delivery_at < self.requested_pickup_at:
+            raise ValueError("Required delivery date/time must be after the requested pickup date/time")
+        return self
 
 class RateOption(BaseModel):
     carrier_id: int
@@ -63,13 +71,27 @@ class ShipmentCreate(BaseModel):
     carrier_id: int
     option_index: int = 0
     pickup_date: date | None = None
+    scheduled_pickup_at: datetime | None = None
+    requested_delivery_at: datetime | None = None
 
 class ShipmentOut(ORMModel):
     id: int; shipment_number: str; customer_id: int; carrier_id: int | None; quote_id: int | None
     status: str; pro_number: str | None; bol_number: str | None
     origin: dict; destination: dict; handling_units: list; accessorials: list
     carrier_cost: Decimal; customer_charge: Decimal; final_carrier_cost: Decimal | None
-    pickup_date: date | None; estimated_delivery: date | None; delivered_at: datetime | None; created_at: datetime
+    pickup_date: date | None; estimated_delivery: date | None
+    scheduled_pickup_at: datetime | None; requested_delivery_at: datetime | None; actual_pickup_at: datetime | None
+    delivered_at: datetime | None; created_at: datetime
+
+
+class ShipmentUpdate(BaseModel):
+    bol_number: str | None = None
+    pro_number: str | None = None
+    scheduled_pickup_at: datetime | None = None
+    requested_delivery_at: datetime | None = None
+    actual_pickup_at: datetime | None = None
+    delivered_at: datetime | None = None
+    status: str | None = None
 
 class TrackingEventCreate(BaseModel):
     code: str; status: str; description: str | None = None; location: str | None = None

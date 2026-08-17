@@ -55,13 +55,16 @@ def _on_time_for_period(db: Session, start: date, end_exclusive: date):
         Shipment.delivered_at.is_not(None),
         Shipment.delivered_at >= start_dt,
         Shipment.delivered_at < end_dt,
-        Shipment.estimated_delivery.is_not(None),
     ).all()
+    rows = [s for s in rows if s.requested_delivery_at is not None or s.estimated_delivery is not None]
     if not rows:
         return None, 0
     on_time = 0
     for s in rows:
-        if s.delivered_at.date() <= s.estimated_delivery:
+        if s.requested_delivery_at is not None:
+            if s.delivered_at <= s.requested_delivery_at:
+                on_time += 1
+        elif s.estimated_delivery is not None and s.delivered_at.date() <= s.estimated_delivery:
             on_time += 1
     return (Decimal(on_time) / Decimal(len(rows)) * Decimal("100")).quantize(Decimal("0.1")), len(rows)
 

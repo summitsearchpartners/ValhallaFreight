@@ -4,8 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models import Quote, Shipment, TrackingEvent, Customer, Carrier
-from app.schemas.entities import ShipmentCreate, ShipmentOut, TrackingEventCreate, DirectShipmentCreate, QuoteRequest
+from app.schemas.entities import ShipmentCreate, ShipmentOut, TrackingEventCreate, DirectShipmentCreate, QuoteRequest, ShipmentUpdate
 from app.domains.shipments.import_service import import_shipments
+from app.domains.shipments.service import update_shipment
 from app.services.rating import RatingEngine
 
 router = APIRouter(prefix="/shipments", tags=["Shipments"])
@@ -19,11 +20,15 @@ def _quote_number():
     return f"VFQ-{datetime.utcnow():%y%m%d%H%M%S%f}"
 
 
-def _create_from_quote(db: Session, q: Quote, carrier_id: int, pickup_date=None):
+def _create_from_quote(db: Session, q: Quote, carrier_id: int, pickup_date=None, scheduled_pickup_at=None, requested_delivery_at=None):
     matches = [o for o in (q.options or []) if int(o.get("carrier_id", 0)) == carrier_id]
     if not matches:
         raise HTTPException(status_code=400, detail="Carrier option not found on quote")
     opt = matches[0]
+    schedule_at = scheduled_pickup_at or q.requested_pickup_at
+    legacy_pickup = schedule_at.date() if schedule_at else pickup_date
+    delivery_target = requested_delivery_at or q.requested_delivery_at
+    carrier_eta = (legacy_pickup + timedelta(days=int(opt["transit_days"]))) if legacy_pickup else None
     s = Shipment(
         shipment_number=_shipment_number(),
         customer_id=q.customer_id,
@@ -35,8 +40,10 @@ def _create_from_quote(db: Session, q: Quote, carrier_id: int, pickup_date=None)
         accessorials=q.accessorials,
         carrier_cost=Decimal(str(opt["carrier_cost"])),
         customer_charge=Decimal(str(opt["customer_price"])),
-        pickup_date=pickup_date,
-        estimated_delivery=(pickup_date + timedelta(days=int(opt["transit_days"]))) if pickup_date else None,
+        pickup_date=legacy_pickup,
+        estimated_delivery=carrier_eta,
+        scheduled_pickup_at=schedule_at,
+        requested_delivery_at=delivery_target,
     )
     db.add(s)
     q.status = "booked"
@@ -55,7 +62,7 @@ def book(payload: ShipmentCreate, db: Session = Depends(get_db)):
     q = db.query(Quote).filter(Quote.quote_number == payload.quote_number).first()
     if not q:
         raise HTTPException(status_code=404, detail="Quote not found")
-    return _create_from_quote(db, q, payload.carrier_id, payload.pickup_date)
+    return _create_from_quote(db, q, payload.carrier_id, payload.pickup_date, payload.scheduled_pickup_at, payload.requested_delivery_at)
 
 
 @router.post("/direct", response_model=ShipmentOut)
@@ -66,6 +73,8 @@ def direct_shipment(payload: DirectShipmentCreate, db: Session = Depends(get_db)
         destination=payload.destination,
         handling_units=payload.handling_units,
         accessorials=payload.accessorials,
+        requested_pickup_at=payload.requested_pickup_at,
+        requested_delivery_at=payload.requested_delivery_at,
     )
     try:
         options = RatingEngine(db).get_rates(request)
@@ -91,10 +100,12 @@ def direct_shipment(payload: DirectShipmentCreate, db: Session = Depends(get_db)
         accessorials=payload.accessorials,
         options=selected_options,
         expires_at=datetime.utcnow()+timedelta(hours=24),
+        requested_pickup_at=payload.requested_pickup_at,
+        requested_delivery_at=payload.requested_delivery_at,
     )
     db.add(q)
     db.flush()
-    return _create_from_quote(db, q, payload.carrier_id, payload.pickup_date)
+    return _create_from_quote(db, q, payload.carrier_id, payload.pickup_date, payload.requested_pickup_at, payload.requested_delivery_at)
 
 
 @router.post("/import")
@@ -120,9 +131,20 @@ def shipment_detail(shipment_id: int, db: Session = Depends(get_db)):
         "carrier_id":s.carrier_id,"carrier_name":carrier.name if carrier else None,"carrier_scac":carrier.scac if carrier else None,
         "origin":s.origin,"destination":s.destination,"handling_units":s.handling_units,"accessorials":s.accessorials,
         "carrier_cost":s.carrier_cost,"final_carrier_cost":s.final_carrier_cost,"customer_charge":s.customer_charge,
-        "pickup_date":s.pickup_date,"estimated_delivery":s.estimated_delivery,"delivered_at":s.delivered_at,"created_at":s.created_at,
+        "pickup_date":s.pickup_date,"estimated_delivery":s.estimated_delivery,
+        "scheduled_pickup_at":s.scheduled_pickup_at,"requested_delivery_at":s.requested_delivery_at,
+        "actual_pickup_at":s.actual_pickup_at,"delivered_at":s.delivered_at,"created_at":s.created_at,
         "tracking_events":[{"id":e.id,"code":e.code,"status":e.status,"description":e.description,"location":e.location,"event_time":e.event_time,"source":e.source} for e in events]
     }
+
+
+@router.patch("/{shipment_id}")
+def edit_shipment(shipment_id: int, payload: ShipmentUpdate, db: Session = Depends(get_db)):
+    shipment = db.get(Shipment, shipment_id)
+    if not shipment:
+        raise HTTPException(status_code=404, detail="Shipment not found")
+    update_shipment(db, shipment, payload)
+    return shipment_detail(shipment_id, db)
 
 
 @router.get("/{shipment_id}/tracking")

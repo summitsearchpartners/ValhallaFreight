@@ -32,6 +32,8 @@ def _serialize_quote(q: Quote, db: Session):
         "selected_option": selected,
         "created_at": q.created_at,
         "expires_at": q.expires_at,
+        "requested_pickup_at": q.requested_pickup_at,
+        "requested_delivery_at": q.requested_delivery_at,
         "shipment_id": shipment.id if shipment else None,
         "shipment_number": shipment.shipment_number if shipment else None,
     }
@@ -69,6 +71,8 @@ def rate(payload: QuoteRequest, db: Session = Depends(get_db)):
         accessorials=payload.accessorials,
         options=[o.model_dump(mode="json") for o in options],
         expires_at=expires,
+        requested_pickup_at=payload.requested_pickup_at,
+        requested_delivery_at=payload.requested_delivery_at,
     )
     db.add(q)
     db.commit()
