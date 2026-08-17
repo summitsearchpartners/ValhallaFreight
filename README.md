@@ -48,7 +48,7 @@ These are local-development credentials only. Change them before any shared or A
 Prerequisites: Docker Desktop, Git, and Visual Studio Code.
 
 ```powershell
-cd C:\GitHub\FreightForge
+cd C:\GitHub\ValhallaFreight
 docker compose up --build
 ```
 

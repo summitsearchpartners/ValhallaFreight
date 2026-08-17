@@ -2,15 +2,15 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: freightforge
-      POSTGRES_USER: freightforge
-      POSTGRES_PASSWORD: freightforge
+      POSTGRES_DB: valhalla_freight
+      POSTGRES_USER: valhalla_freight
+      POSTGRES_PASSWORD: valhalla_freight
     ports:
       - "5432:5432"
     volumes:
-      - freightforge_postgres:/var/lib/postgresql/data
+      - valhalla_freight_postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U freightforge -d freightforge"]
+      test: ["CMD-SHELL", "pg_isready -U valhalla_freight -d valhalla_freight"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -18,7 +18,7 @@ services:
   backend:
     build: ./backend
     environment:
-      DATABASE_URL: postgresql+psycopg://freightforge:freightforge@db:5432/freightforge
+      DATABASE_URL: postgresql+psycopg://valhalla_freight:valhalla_freight@db:5432/valhalla_freight
       CORS_ORIGINS: http://localhost:5173
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-valhalla-local-development-secret-change-me}
       DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@valhallafreight.local}
@@ -44,4 +44,4 @@ services:
       - backend
 
 volumes:
-  freightforge_postgres:
+  valhalla_freight_postgres:
