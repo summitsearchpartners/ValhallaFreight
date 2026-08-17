@@ -141,3 +141,7 @@ See `docs/MODULAR_ARCHITECTURE.md` and `docs/V0.4.0_CUSTOMER_360.md` for the dev
 
 ## v0.4.1 Customer 360 usability
 Dedicated Notes, Google Places address autocomplete readiness, system-generated customer codes, consistent phone formatting, and clickable customer/contact communication fields.
+
+
+## v0.4.4
+Quote Studio origin and destination now use shared Google Places address autocomplete and automatically populate City, State, and ZIP.

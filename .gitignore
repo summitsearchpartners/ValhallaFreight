@@ -47,6 +47,3 @@ pgdata/
 *.tmp
 *.temp
 *.bak
-
-# TypeScript build cache
-*.tsbuildinfo

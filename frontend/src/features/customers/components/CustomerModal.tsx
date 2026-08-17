@@ -2,7 +2,7 @@ import {useState} from 'react';
 import {X,Building2,Hash,Phone,Mail,Globe2} from 'lucide-react';
 import {customerApi} from '../api';
 import type {CustomerSummary} from '../types';
-import AddressField from './AddressField';
+import AddressField from '../../../shared/address/AddressField';
 import {formatUsPhone} from '../utils/formatters';
 
 export default function CustomerModal({onClose,onSaved}:{onClose:()=>void,onSaved:(c:CustomerSummary)=>void}){

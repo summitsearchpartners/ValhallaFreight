@@ -88,3 +88,6 @@
 .customerDetailPage .activityRow p{font-size:10px}
 @media(max-width:1200px){.content.contentWide.customerWorkspaceContent{padding:26px}.customerDetailPage .customer360Grid{grid-template-columns:1fr}.customerDetailPage .customer360Side{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.content.contentWide.customerWorkspaceContent{padding:18px}.customerDetailPage .customer360Title h1{font-size:24px}.customerDetailPage .customer360Kpis{grid-template-columns:1fr 1fr}.customerDetailPage .customer360Side{grid-template-columns:1fr}}
+
+/* v0.4.4 shared smart address fields + Quote Studio lane autocomplete */
+.quoteAddressGroup{overflow:visible}.quoteAddressGroup>label{display:block}.quoteAddressGroup .vfAddressField{margin-top:5px}.quoteAddressGroup .vfAddressInputWrap input{width:100%;padding-left:34px}.quoteAddressGroup .form3{align-items:end}.quoteAddressGroup .form3 label{gap:5px}.quoteAddressGroup .form3 input{width:100%}.quoteLaneGrid{overflow:visible}.quotegrid>.card{overflow:visible}

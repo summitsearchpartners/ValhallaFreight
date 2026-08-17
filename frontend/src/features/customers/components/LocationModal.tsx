@@ -1,7 +1,7 @@
 import {useState} from 'react';
 import {MapPin,X} from 'lucide-react';
 import {customerApi} from '../api';
-import AddressField from './AddressField';
+import AddressField from '../../../shared/address/AddressField';
 import {formatUsPhone} from '../utils/formatters';
 
 export default function LocationModal({customerId,close,saved}:{customerId:number,close:()=>void,saved:()=>void}){
