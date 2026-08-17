@@ -189,3 +189,48 @@
 .scheduleInputs{margin-bottom:4px}.scheduleInputs label,.quoteApprovalSchedule label{font-size:9px;font-weight:700;color:#5f727d}.scheduleInputs input,.quoteApprovalSchedule input{margin-top:6px;width:100%}.quoteScheduleSummary{display:grid;grid-template-columns:1fr 1fr;gap:12px}.quoteScheduleSummary>div{padding:14px;border:1px solid #e3eaed;border-radius:10px;background:#f8fafb;display:flex;flex-direction:column}.quoteScheduleSummary span{font-size:8px;color:#84949c;text-transform:uppercase;letter-spacing:.5px}.quoteScheduleSummary b{font-size:11px;color:#2d4651;margin-top:6px}.quoteScheduleSummary small{font-size:8px;color:#91a0a8;margin-top:4px}.quoteApprovalSchedule{display:grid;grid-template-columns:1fr;gap:11px;margin:12px 0}.quoteApprovalSchedule small{display:block;font-size:7px;color:#91a0a8;margin-top:4px}.shipmentDates.expanded{grid-template-columns:repeat(5,minmax(0,1fr))}.recordEditLink{border:0;background:transparent;color:var(--accent);font-size:9px;font-weight:800;display:flex;gap:5px;align-items:center;cursor:pointer}.recordEditLink svg{width:12px}.shipmentEditModal{width:min(900px,calc(100vw - 30px))}.shipmentEditIntro{margin:18px 20px 0;padding:13px 15px;border:1px solid #e2e9ec;border-radius:10px;background:#f7fafb;display:flex;align-items:flex-start;gap:10px}.shipmentEditIntro svg{color:var(--accent);width:18px;margin-top:2px}.shipmentEditIntro>div{display:flex;flex-direction:column}.shipmentEditIntro b{font-size:10px;color:#304852}.shipmentEditIntro p{font-size:8px;line-height:1.5;color:#75868f;margin:4px 0 0}
 @media(max-width:1300px){.shipmentDates.expanded{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.shipmentDates.expanded,.quoteScheduleSummary{grid-template-columns:1fr}.shipmentDetailHead{flex-wrap:wrap}}
+
+
+/* v0.5.5 login readability — desktop scale improvements */
+.loginPage{grid-template-columns:minmax(600px,1.08fr) minmax(560px,.92fr)}
+.loginHeroInner{padding:52px 64px 44px}
+.loginBrand{gap:18px}
+.loginBrand img{width:88px;height:88px}
+.loginBrand strong{font-size:25px;letter-spacing:-.35px}
+.loginBrand span{font-size:9px;letter-spacing:1.7px;margin-top:4px}
+.heroCopy{margin:auto 0 34px;max-width:760px}
+.loginBadge{padding:9px 14px;gap:9px;font-size:10px;letter-spacing:.85px}
+.loginBadge svg{width:16px;height:16px}
+.heroCopy h1{font-size:62px;line-height:1.025;letter-spacing:-2.8px;margin:30px 0 22px}
+.heroCopy p{max-width:680px;font-size:16px;line-height:1.7}
+.loginBenefits{gap:13px;max-width:760px}
+.loginBenefits>div{border-radius:12px;padding:16px 18px;gap:15px}
+.loginBenefits svg{width:21px;height:21px}
+.loginBenefits b{font-size:13px}
+.loginBenefits small{font-size:10px;margin-top:4px;line-height:1.45}
+.heroFooter{margin-top:26px;gap:8px;font-size:10px}
+.heroFooter svg{width:15px}
+.loginFormSide{padding:48px}
+.loginCard{width:min(520px,100%);border-radius:20px;padding:40px 42px 32px;box-shadow:0 28px 72px #16303f1d}
+.loginCardTop{gap:16px;margin-bottom:32px}
+.loginLock{width:52px;height:52px;border-radius:13px}
+.loginLock svg{width:23px}
+.loginCard h2{font-size:28px;letter-spacing:-.8px}
+.loginCardTop p{font-size:11px;margin:6px 0 0}
+.loginCard label{margin-top:20px;font-size:11px;font-weight:700}
+.loginInput{height:54px;border-radius:10px;padding:0 14px;margin-top:7px}
+.loginInput>svg{width:18px}
+.loginInput input{padding:0 11px;font-size:13px}
+.forgot{font-size:10px}
+.showPass{padding:4px}
+.showPass svg{width:18px}
+.loginError{margin-top:14px;border-radius:8px;padding:11px 13px;font-size:11px}
+.loginSubmit{height:54px;border-radius:10px;font-size:13px;margin-top:24px;gap:10px;box-shadow:0 10px 24px #ef6c2738}
+.loginSubmit svg{width:18px}
+.secureLine{margin-top:24px;padding-top:20px;font-size:10px;gap:8px}
+.secureLine svg{width:14px}
+.loginMeta{margin-top:22px;font-size:8px;letter-spacing:.65px;gap:8px}
+.loginMeta i{width:4px;height:4px}
+@media(max-width:1280px){.loginPage{grid-template-columns:minmax(520px,1.05fr) minmax(480px,.95fr)}.loginHeroInner{padding:42px 46px 34px}.loginBrand img{width:72px;height:72px}.loginBrand strong{font-size:21px}.heroCopy h1{font-size:52px}.heroCopy p{font-size:14px}.loginBenefits>div{padding:13px 15px}.loginCard{width:min(470px,100%);padding:34px 36px 28px}.loginCard h2{font-size:25px}}
+@media(max-height:780px) and (min-width:981px){.loginHeroInner{padding-top:30px;padding-bottom:28px}.loginBrand img{width:68px;height:68px}.heroCopy{margin:auto 0 22px}.heroCopy h1{font-size:49px;margin:20px 0 14px}.heroCopy p{font-size:13px}.loginBenefits{gap:8px}.loginBenefits>div{padding:10px 13px}.heroFooter{margin-top:15px}.loginCard{padding:30px 34px 24px}.loginCardTop{margin-bottom:22px}.loginCard label{margin-top:14px}.loginInput{height:48px}.loginSubmit{height:48px;margin-top:18px}.secureLine{margin-top:18px;padding-top:14px}.loginMeta{margin-top:14px}}
+@media(max-width:980px){.loginPage{grid-template-columns:1fr}.loginHero{display:none}.loginFormSide{padding:24px}.loginMeta{flex-wrap:wrap;justify-content:center}.loginCard{padding:32px 28px}}
