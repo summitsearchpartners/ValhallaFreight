@@ -125,3 +125,7 @@ Carrier integrations should implement the normalized Valhalla Freight contract i
 ## Important development note
 
 The local rating service currently uses a **deterministic development carrier connector** so the entire Quote Studio and pricing workflow can run without paid carrier credentials. It is intentionally isolated in `backend/app/services/rating.py`. That adapter is the replacement point for a real LTL aggregator or direct carrier APIs.
+
+
+## v0.3.0
+Authenticated application shell with collapsible navigation, Ctrl+K command search, notifications, profile controls, and responsive Valhalla Freight workspace styling.
