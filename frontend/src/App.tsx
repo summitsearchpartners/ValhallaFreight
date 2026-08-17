@@ -4,7 +4,9 @@ import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Quotes from './pages/Quotes';
 import Login from './pages/Login';
-import {Shipments,Customers,Carriers,Pricing,Prospects,Analytics,Billing} from './pages/Tables';
+import {Shipments,Carriers,Pricing,Prospects,Analytics,Billing} from './pages/Tables';
+import CustomersPage from './features/customers/CustomersPage';
+import CustomerDetailPage from './features/customers/CustomerDetailPage';
 import {useAuth} from './context/AuthContext';
 
 function Protected({children}:{children:ReactNode}){
@@ -15,5 +17,5 @@ function Protected({children}:{children:ReactNode}){
 }
 export default function App(){return <Routes>
   <Route path="/login" element={<Login/>}/>
-  <Route path="/*" element={<Protected><Layout><Routes><Route path="/" element={<Dashboard/>}/><Route path="/quotes" element={<Quotes/>}/><Route path="/shipments" element={<Shipments/>}/><Route path="/customers" element={<Customers/>}/><Route path="/carriers" element={<Carriers/>}/><Route path="/pricing" element={<Pricing/>}/><Route path="/analytics" element={<Analytics/>}/><Route path="/prospects" element={<Prospects/>}/><Route path="/billing" element={<Billing/>}/></Routes></Layout></Protected>}/>
+  <Route path="/*" element={<Protected><Layout><Routes><Route path="/" element={<Dashboard/>}/><Route path="/quotes" element={<Quotes/>}/><Route path="/shipments" element={<Shipments/>}/><Route path="/customers" element={<CustomersPage/>}/><Route path="/customers/:customerId" element={<CustomerDetailPage/>}/><Route path="/carriers" element={<Carriers/>}/><Route path="/pricing" element={<Pricing/>}/><Route path="/analytics" element={<Analytics/>}/><Route path="/prospects" element={<Prospects/>}/><Route path="/billing" element={<Billing/>}/></Routes></Layout></Protected>}/>
 </Routes>}

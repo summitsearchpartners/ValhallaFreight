@@ -4,10 +4,11 @@ from app.core.config import settings
 from app.db.base import Base
 from app.db.session import engine, SessionLocal
 from app.services.seed import seed
-from app.api.routes import customers, carriers, pricing, quotes, shipments, dashboard, prospects, auth
+from app.api.routes import carriers, pricing, quotes, shipments, dashboard, prospects, auth
+from app.domains.customers import routes as customers
 from app.api.deps import get_current_user
 
-app = FastAPI(title=settings.app_name, version="0.2.0", description="Valhalla Freight LTL-first Transportation Management System")
+app = FastAPI(title=settings.app_name, version="0.4.1", description="Valhalla Freight LTL-first Transportation Management System")
 app.add_middleware(CORSMiddleware, allow_origins=[x.strip() for x in settings.cors_origins.split(',')], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 @app.on_event("startup")

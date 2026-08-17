@@ -16,6 +16,10 @@ class Customer(Base):
     credit_limit: Mapped[Decimal] = mapped_column(Numeric(12,2), default=Decimal("0"))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     shipments = relationship("Shipment", back_populates="customer")
+    profile = relationship("CustomerProfile", back_populates="customer", uselist=False, cascade="all, delete-orphan")
+    locations = relationship("CustomerLocation", back_populates="customer", cascade="all, delete-orphan")
+    contacts = relationship("CustomerContact", back_populates="customer", cascade="all, delete-orphan")
+    activities = relationship("CustomerActivity", back_populates="customer", cascade="all, delete-orphan")
 
 class Carrier(Base):
     __tablename__ = "carriers"

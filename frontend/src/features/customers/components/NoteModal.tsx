@@ -1,0 +1,8 @@
+import {useState} from 'react';
+import {StickyNote,X} from 'lucide-react';
+import {customerApi} from '../api';
+export default function NoteModal({customerId,close,saved}:{customerId:number,close:()=>void,saved:()=>void}){
+ const [f,setF]=useState({activity_type:'note',subject:'',body:''}); const [saving,setSaving]=useState(false); const set=(k:string,v:string)=>setF(x=>({...x,[k]:v}));
+ async function submit(e:any){e.preventDefault();setSaving(true);try{await customerApi.addActivity(customerId,f);saved()}finally{setSaving(false)}}
+ return <div className="modalShade"><form className="entityModal noteModal" onSubmit={submit}><div className="entityModalHead"><div className="entityModalIcon"><StickyNote/></div><div><span>CUSTOMER 360</span><h2>Add customer note</h2></div><button type="button" onClick={close}><X/></button></div><div className="noteForm"><label>Subject<input autoFocus required value={f.subject} onChange={e=>set('subject',e.target.value)} placeholder="Pricing review, customer request, operational context…"/></label><label>Note<textarea required rows={11} value={f.body} onChange={e=>set('body',e.target.value)} placeholder="Add the full customer note here. This space is intentionally larger so detailed account context is easy to enter and review."/></label><small>Notes are stored on the customer record with the signed-in user and timestamp.</small></div><div className="entityModalFoot"><button type="button" className="btn secondary" onClick={close}>Cancel</button><button className="btn primary" disabled={saving}>{saving?'Saving...':'Save note'}</button></div></form></div>
+}

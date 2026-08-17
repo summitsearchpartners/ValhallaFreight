@@ -129,3 +129,19 @@ The local rating service currently uses a **deterministic development carrier co
 
 ## v0.3.0
 Authenticated application shell with collapsible navigation, Ctrl+K command search, notifications, profile controls, and responsive Valhalla Freight workspace styling.
+
+## v0.4.0 — Customer 360
+
+Customer 360 is the first Valhalla Freight module built using the new feature/domain architecture. Customer data now has a dedicated backend domain and frontend feature directory rather than being extended inside monolithic shared files.
+
+The workspace includes account KPIs, customer profile data, operating locations, contacts, commercial controls, notes/activity and recent shipment history. New locations, contacts and account notes can be created directly inside Customer 360.
+
+See `docs/MODULAR_ARCHITECTURE.md` and `docs/V0.4.0_CUSTOMER_360.md` for the development standard used going forward.
+
+
+## v0.4.1 Customer 360 usability
+Dedicated Notes, Google Places address autocomplete readiness, system-generated customer codes, consistent phone formatting, and clickable customer/contact communication fields.
+
+## v0.4.2 Address workflow
+
+Customer address entry is now integrated directly into normal street-address fields instead of showing a separate Smart Address Lookup panel. When Google Places is configured, typing in a street-address field presents predictions and selecting one fills city, state, ZIP and country. Create Customer now includes a primary/billing address as part of account creation.
