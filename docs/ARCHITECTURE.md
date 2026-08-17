@@ -1,4 +1,4 @@
-# FreightForge Architecture Blueprint
+# Valhalla Freight Architecture Blueprint
 
 ## Product domains
 
@@ -23,11 +23,11 @@ Customer → Origin → Destination → ZIP → Carrier → Terminal → Handlin
 
 ## Integration strategy
 
-Carrier integrations should be adapters behind a FreightForge interface. V1 can use an aggregator. High-volume carriers can migrate to direct API/EDI integrations individually without changing quote, shipment, finance or analytics screens.
+Carrier integrations should be adapters behind a Valhalla Freight interface. V1 can use an aggregator. High-volume carriers can migrate to direct API/EDI integrations individually without changing quote, shipment, finance or analytics screens.
 
 ## Multi-tenant path
 
-The current starter is a single operating company instance. Before offering FreightForge as SaaS, introduce `organization_id` as a tenant boundary across operational tables and enforce it in repository/service access. This preserves the path to running both the brokerage and a separate TMS SaaS business from the same platform family.
+The current starter is a single operating company instance. Before offering Valhalla Freight as SaaS, introduce `organization_id` as a tenant boundary across operational tables and enforce it in repository/service access. This preserves the path to running both the brokerage and a separate TMS SaaS business from the same platform family.
 
 ## Production controls still required before public deployment
 

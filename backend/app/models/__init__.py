@@ -1,2 +1,3 @@
-from app.models.entities import Customer, Carrier, PricingRule, Quote, Shipment, TrackingEvent, Invoice
-__all__ = ["Customer","Carrier","PricingRule","Quote","Shipment","TrackingEvent","Invoice"]
+from app.models.entities import Customer, Carrier, PricingRule, Quote, Shipment, TrackingEvent, Invoice, User
+
+__all__ = ["Customer", "Carrier", "PricingRule", "Quote", "Shipment", "TrackingEvent", "Invoice", "User"]

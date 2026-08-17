@@ -1,16 +1,20 @@
-# FreightForge
+# Valhalla Freight
 
-**Transportation Intelligence. Forged for LTL.**
+**Built for the Long Haul. Driven by Honor.**
 
-FreightForge is an LTL-first Transportation Management System foundation designed around the complete brokerage lifecycle:
+Valhalla Freight is an LTL-first Transportation Management System foundation designed around the complete brokerage lifecycle:
 
 **Quote → Book → Dispatch → Track → Deliver → Audit → Invoice → Analyze**
 
-This repository contains a Dockerized React/TypeScript frontend, Python FastAPI backend and PostgreSQL data layer. The current build is intentionally structured as a production-oriented foundation rather than a throwaway prototype: carrier responses are normalized behind a rating layer, customer pricing is rule-driven, shipment data is structured for analytics, and integrations can be replaced without redesigning the operating application.
+This repository contains a Dockerized React/TypeScript frontend, Python FastAPI backend and PostgreSQL data layer. The v0.2 build adds authenticated access and Valhalla Freight branding while preserving the production-oriented foundation: carrier responses are normalized behind a rating layer, customer pricing is rule-driven, shipment data is structured for analytics, and integrations can be replaced without redesigning the operating application.
 
 ## What is already in this build
 
-- FreightForge command-center dashboard
+- Professional Valhalla Freight login experience
+- JWT authentication and protected operational APIs
+- Valhalla Freight logo/brand integration
+- Authenticated user session restoration and sign-out
+- Valhalla Freight command-center dashboard
 - Professional responsive operations UI
 - Customer master data
 - Carrier network and connectivity status
@@ -30,19 +34,28 @@ This repository contains a Dockerized React/TypeScript frontend, Python FastAPI 
 - FastAPI interactive API documentation
 - Docker Compose local environment
 
-## Start FreightForge on Windows / PowerShell
+## Local development login
+
+After the first startup, use:
+
+- Email: `admin@valhallafreight.local`
+- Password: `Valhalla123!`
+
+These are local-development credentials only. Change them before any shared or AWS deployment.
+
+## Start Valhalla Freight on Windows / PowerShell
 
 Prerequisites: Docker Desktop, Git, and Visual Studio Code.
 
 ```powershell
-cd C:\Path\To\FreightForge
+cd C:\GitHub\FreightForge
 docker compose up --build
 ```
 
 Open:
 
-- FreightForge UI: http://localhost:5173
-- FreightForge API: http://localhost:8000
+- Valhalla Freight UI: http://localhost:5173
+- Valhalla Freight API: http://localhost:8000
 - API documentation: http://localhost:8000/docs
 - API health: http://localhost:8000/health
 
@@ -64,7 +77,7 @@ docker compose up --build
 ```powershell
 git init
 git add .
-git commit -m "Initial FreightForge platform foundation"
+git commit -m "Initial Valhalla Freight platform foundation"
 git branch -M main
 git remote add origin YOUR_GIT_REPOSITORY_URL
 git push -u origin main
@@ -90,7 +103,7 @@ Normalization     Quote / Shipment / Track
     Reporting Layer
 ```
 
-Carrier integrations should implement the normalized FreightForge contract instead of leaking carrier-specific payloads into the rest of the software.
+Carrier integrations should implement the normalized Valhalla Freight contract instead of leaking carrier-specific payloads into the rest of the software.
 
 ## Recommended build sequence from here
 
@@ -106,7 +119,7 @@ Carrier integrations should implement the normalized FreightForge contract inste
 10. Customer self-service portal.
 11. Prospect Analysis column-mapping and savings model.
 12. Advanced reporting/data warehouse layer.
-13. AI intelligence over structured FreightForge data.
+13. AI intelligence over structured Valhalla Freight data.
 14. AWS deployment, secrets, observability, backups and CI/CD.
 
 ## Important development note

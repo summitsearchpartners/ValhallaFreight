@@ -20,6 +20,9 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://freightforge:freightforge@db:5432/freightforge
       CORS_ORIGINS: http://localhost:5173
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-valhalla-local-development-secret-change-me}
+      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@valhallafreight.local}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-Valhalla123!}
     ports:
       - "8000:8000"
     volumes:
@@ -36,6 +39,7 @@ services:
       - "5173:5173"
     volumes:
       - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
     depends_on:
       - backend
 
