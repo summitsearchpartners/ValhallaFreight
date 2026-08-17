@@ -21,3 +21,70 @@
 /* Customer 360 v0.4.2 address experience */
 .customerCreateModal{width:min(820px,calc(100vw - 30px))}.formSectionLabel{grid-column:1/-1;border-top:1px solid #e7edf0;padding-top:15px;margin-top:2px;display:flex;flex-direction:column;gap:3px}.formSectionLabel span{font-family:Manrope;font-size:11px;font-weight:800;color:#273f4a}.formSectionLabel small{font-size:8px;color:#8998a1;font-weight:500}.vfAddressField{position:relative;width:100%;margin-top:6px;z-index:8}.vfAddressInputWrap{position:relative}.vfAddressInputWrap>svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#e16a2a;pointer-events:none;z-index:2}.entityFormGrid .vfAddressInputWrap input{margin-top:0;padding-left:34px}.vfAddressSuggestions{position:absolute;left:0;right:0;top:calc(100% + 5px);background:#fff;border:1px solid #dce5e9;border-radius:9px;box-shadow:0 18px 45px #0b1d2730;overflow:hidden;z-index:250}.vfAddressSuggestions button{width:100%;border:0;border-bottom:1px solid #eef2f4;background:#fff;padding:10px 12px;display:flex;gap:9px;align-items:flex-start;text-align:left;color:#354c57;font-size:9px;line-height:1.4;cursor:pointer}.vfAddressSuggestions button:hover{background:#fff7f2}.vfAddressSuggestions button svg{color:#e16a2a;flex:none;margin-top:1px}.vfAddressGoogle{padding:6px 11px;text-align:right;color:#96a2a9;font-size:7px;font-weight:600;background:#fafcfd}.entityModal .entityFormGrid{overflow:visible}.locationModal,.customerCreateModal{overflow:visible}.locationModal .entityFormGrid,.customerCreateModal .entityFormGrid{max-height:calc(90vh - 160px);overflow-y:auto;overflow-x:visible}.locationModal .entityModalFoot,.customerCreateModal .entityModalFoot{position:sticky;bottom:0;z-index:20}
 @media(max-width:760px){.customerCreateModal{width:calc(100vw - 20px)}}
+
+
+/* v0.4.3 Customer 360 full-width readability */
+.content.contentWide.customerWorkspaceContent{max-width:none;margin:0;padding:32px 42px 48px}
+.customerDetailPage{width:100%;max-width:none}
+.customerDetailPage .customer360Head{margin-bottom:22px;gap:22px}
+.customerDetailPage .backLink{font-size:11px}
+.customerDetailPage .customerHeroAvatar{width:62px;height:62px;border-radius:15px;font-size:17px}
+.customerDetailPage .customer360Title{gap:16px}
+.customerDetailPage .customer360Title h1{font-size:30px;margin:5px 0}
+.customerDetailPage .customer360Title p{font-size:11px}
+.customerDetailPage .customerHeroMeta>span:first-child{font-size:9px}
+.customerDetailPage .customer360Actions .btn{font-size:12px;padding:10px 16px}
+.customerDetailPage .customer360Kpis{gap:16px;margin-bottom:22px}
+.customerDetailPage .customer360Metric{padding:20px 22px;gap:15px;min-height:92px}
+.customerDetailPage .customerMetricIcon{width:43px;height:43px;border-radius:11px}
+.customerDetailPage .customerMetricIcon svg{width:19px;height:19px}
+.customerDetailPage .customer360Metric span{font-size:10px;font-weight:700;color:#687b85}
+.customerDetailPage .customer360Metric strong{font-size:22px;margin:4px 0}
+.customerDetailPage .customer360Metric small{font-size:9px}
+.customerDetailPage .customerTabs{height:54px;margin-bottom:20px;gap:7px}
+.customerDetailPage .customerTabs button{font-size:11px;padding:0 17px;gap:7px}
+.customerDetailPage .customerTabs button svg{width:16px;height:16px}
+.customerDetailPage .customer360Grid{grid-template-columns:minmax(0,2.15fr) minmax(340px,.85fr);gap:20px}
+.customerDetailPage .customer360Main,.customerDetailPage .customer360Side{gap:20px}
+.customerDetailPage .card{border-radius:13px}
+.customerDetailPage .customer360Main>.card,.customerDetailPage .customer360Side>.card,
+.customerDetailPage>.card,.customerDetailPage .commercialGrid>.card{padding:22px}
+.customerDetailPage .sectionHead{margin-bottom:20px}
+.customerDetailPage .sectionHead h3{font-size:17px}
+.customerDetailPage .sectionHead p{font-size:10px;margin-top:5px}
+.customerDetailPage .infoGrid{gap:20px 28px}
+.customerDetailPage .infoItem>span{font-size:9px;letter-spacing:.8px}
+.customerDetailPage .infoItem>div{font-size:12px;margin-top:7px;gap:7px}
+.customerDetailPage .infoItem svg{width:15px;height:15px}
+.customerDetailPage .primaryContact{padding:12px 0}
+.customerDetailPage .contactAvatar{width:46px;height:46px;font-size:12px;margin-bottom:10px}
+.customerDetailPage .primaryContact b{font-size:13px}
+.customerDetailPage .primaryContact>span{font-size:10px;margin:4px 0 9px}
+.customerDetailPage .primaryContact a,.customerDetailPage .contactBody a{font-size:10px}
+.customerDetailPage .billingAddress{gap:11px}
+.customerDetailPage .billingAddress b{font-size:12px}
+.customerDetailPage .billingAddress span{font-size:10px;margin-top:4px}
+.customerDetailPage .emptyCompact{font-size:11px;padding:16px 0}
+.customerDetailPage .shipmentMini{padding:15px 0}
+.customerDetailPage .shipmentMini b,.customerDetailPage .shipmentMini strong{font-size:11px}
+.customerDetailPage .shipmentMini span{font-size:10px}
+.customerDetailPage .locationGrid,.customerDetailPage .contactGrid{gap:16px}
+.customerDetailPage .locationCard,.customerDetailPage .contactCard{padding:18px;border-radius:12px;gap:14px}
+.customerDetailPage .locationIcon{width:43px;height:43px}
+.customerDetailPage .locationTitle b,.customerDetailPage .contactBody b{font-size:12px}
+.customerDetailPage .locationTitle span,.customerDetailPage .locationBody small{font-size:9px}
+.customerDetailPage .locationBody p{font-size:10px;line-height:1.6}
+.customerDetailPage .locationFlags span,.customerDetailPage .contactTags em{font-size:9px;padding:5px 8px}
+.customerDetailPage .contactAvatar.lg2{width:48px;height:48px}
+.customerDetailPage .contactBody>span{font-size:10px}
+.customerDetailPage .commercialHero strong{font-size:28px}
+.customerDetailPage .commercialHero span{font-size:9px}
+.customerDetailPage .commercialRows .infoItem>div{font-size:11px}
+.customerDetailPage .creditState,.customerDetailPage .policyBox{padding:16px}
+.customerDetailPage .creditState b,.customerDetailPage .policyBox b{font-size:11px}
+.customerDetailPage .creditState span,.customerDetailPage .policyBox span{font-size:10px}
+.customerDetailPage .activityMeta b{font-size:11px}
+.customerDetailPage .activityMeta span,.customerDetailPage .activityRow small{font-size:9px}
+.customerDetailPage .activityRow p{font-size:10px}
+@media(max-width:1200px){.content.contentWide.customerWorkspaceContent{padding:26px}.customerDetailPage .customer360Grid{grid-template-columns:1fr}.customerDetailPage .customer360Side{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:760px){.content.contentWide.customerWorkspaceContent{padding:18px}.customerDetailPage .customer360Title h1{font-size:24px}.customerDetailPage .customer360Kpis{grid-template-columns:1fr 1fr}.customerDetailPage .customer360Side{grid-template-columns:1fr}}

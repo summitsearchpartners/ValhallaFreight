@@ -1,4 +1,4 @@
-import {NavLink,useNavigate} from 'react-router-dom';
+import {NavLink,useLocation,useNavigate} from 'react-router-dom';
 import {LayoutDashboard, Calculator, Truck, Users, Building2, SlidersHorizontal, BarChart3, FileSearch, ReceiptText, ShieldCheck, Bell, Search, ChevronDown, ChevronLeft, ChevronRight, LogOut, Command, CircleDollarSign, MapPin, PackageSearch, Settings, UserRound, CheckCheck} from 'lucide-react';
 import {useEffect,useMemo,useRef,useState,type ReactNode} from 'react';
 import {useAuth} from '../context/AuthContext';
@@ -30,6 +30,8 @@ const notifications=[
 export default function Layout({children}:{children:ReactNode}){
   const {user,logout}=useAuth();
   const navigate=useNavigate();
+  const location=useLocation();
+  const wideCustomerWorkspace=/^\/customers\/\d+/.test(location.pathname);
   const [collapsed,setCollapsed]=useState(false);
   const [searchOpen,setSearchOpen]=useState(false);
   const [search,setSearch]=useState('');
@@ -59,7 +61,7 @@ export default function Layout({children}:{children:ReactNode}){
       </div>
       <nav>{nav.map(([section,items])=><div className="navsection" key={section}><span>{section}</span>{items.map(([Icon,label,path])=><NavLink key={path} to={path} end={path==='/' } title={collapsed?label:undefined}><Icon size={18}/><b>{label}</b></NavLink>)}</div>)}</nav>
       <div className="sidefoot"><ShieldCheck size={17}/><div><b>System healthy</b><span>All services operational</span></div></div>
-      <div className="sideVersion">VF TMS · v0.4.2</div>
+      <div className="sideVersion">VF TMS · v0.4.3</div>
     </aside>
 
     <main>
@@ -90,7 +92,7 @@ export default function Layout({children}:{children:ReactNode}){
           </div>
         </div>
       </header>
-      <div className="content">{children}</div>
+      <div className={`content ${wideCustomerWorkspace?'contentWide customerWorkspaceContent':''}`}>{children}</div>
     </main>
 
     {searchOpen&&<div className="commandOverlay" onMouseDown={e=>{if(e.currentTarget===e.target)setSearchOpen(false)}}>

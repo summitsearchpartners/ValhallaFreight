@@ -141,7 +141,3 @@ See `docs/MODULAR_ARCHITECTURE.md` and `docs/V0.4.0_CUSTOMER_360.md` for the dev
 
 ## v0.4.1 Customer 360 usability
 Dedicated Notes, Google Places address autocomplete readiness, system-generated customer codes, consistent phone formatting, and clickable customer/contact communication fields.
-
-## v0.4.2 Address workflow
-
-Customer address entry is now integrated directly into normal street-address fields instead of showing a separate Smart Address Lookup panel. When Google Places is configured, typing in a street-address field presents predictions and selecting one fills city, state, ZIP and country. Create Customer now includes a primary/billing address as part of account creation.
