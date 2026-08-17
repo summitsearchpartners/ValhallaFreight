@@ -1,26 +1,89 @@
-import {useEffect,useState} from 'react';
-import {MapPin,Package,Sparkles,ArrowRight,CheckCircle2} from 'lucide-react';
+import {useEffect,useMemo,useState} from 'react';
+import {MapPin,Package,Sparkles,ArrowRight,CheckCircle2,Building2,Search} from 'lucide-react';
 import {api} from '../../services/api';
 import {Card,PageHead,Pill} from '../../components/UI';
 import AddressField from '../../shared/address/AddressField';
 import type {StructuredAddress} from '../../shared/address/googlePlaces';
+import {customerApi} from '../customers/api';
+import type {Customer360,CustomerLocation,CustomerSummary} from '../customers/types';
 
 type LaneAddress = StructuredAddress;
 
 const emptyAddress=():LaneAddress=>({address1:'',address2:'',city:'',state:'',postal_code:'',country:'USA'});
 
+function locationToAddress(location:CustomerLocation):LaneAddress{
+  return {
+    address1:location.address1||'',
+    address2:location.address2||'',
+    city:location.city||'',
+    state:location.state||'',
+    postal_code:location.postal_code||'',
+    country:location.country||'USA'
+  };
+}
+
+function SavedLocationPicker({label,locations,value,onChange}:{label:string;locations:CustomerLocation[];value:string;onChange:(value:string)=>void}){
+  return <div className="savedLocationPicker">
+    <div className="savedLocationLabel"><Building2 size={13}/><span>{label}</span></div>
+    <select value={value} onChange={e=>onChange(e.target.value)} disabled={!locations.length}>
+      <option value="">{locations.length?'Optional — choose a saved location…':'No saved locations for this customer'}</option>
+      {locations.map(location=><option key={location.id} value={location.id}>{location.name} — {location.city}, {location.state} {location.postal_code}</option>)}
+    </select>
+    {locations.length>0&&<div className="savedLocationHint">Or type any address below. Saved locations are only a shortcut.</div>}
+  </div>;
+}
+
 export default function QuoteStudioPage(){
-  const [customers,setCustomers]=useState<any[]>([]);
+  const [customers,setCustomers]=useState<CustomerSummary[]>([]);
+  const [selectedCustomerId,setSelectedCustomerId]=useState<number|''>('');
+  const [customer360,setCustomer360]=useState<Customer360|null>(null);
+  const [locationsLoading,setLocationsLoading]=useState(false);
+  const [originLocationId,setOriginLocationId]=useState('');
+  const [destinationLocationId,setDestinationLocationId]=useState('');
   const [rates,setRates]=useState<any[]>([]);
   const [quote,setQuote]=useState('');
   const [loading,setLoading]=useState(false);
   const [origin,setOrigin]=useState<LaneAddress>(emptyAddress());
   const [destination,setDestination]=useState<LaneAddress>(emptyAddress());
 
-  useEffect(()=>{api<any[]>('/customers').then(setCustomers)},[]);
+  useEffect(()=>{
+    customerApi.list().then(items=>{
+      setCustomers(items);
+      if(items.length)setSelectedCustomerId(items[0].id);
+    });
+  },[]);
+
+  useEffect(()=>{
+    if(!selectedCustomerId){setCustomer360(null);return;}
+    let active=true;
+    setLocationsLoading(true);
+    customerApi.get(Number(selectedCustomerId)).then(record=>{
+      if(!active)return;
+      setCustomer360(record);
+      setOriginLocationId('');
+      setDestinationLocationId('');
+      setOrigin(emptyAddress());
+      setDestination(emptyAddress());
+    }).finally(()=>{if(active)setLocationsLoading(false)});
+    return()=>{active=false};
+  },[selectedCustomerId]);
+
+  const savedLocations=useMemo(()=>customer360?.locations.filter(location=>location.active!==false)||[],[customer360]);
 
   function patchOrigin(address:LaneAddress){setOrigin(prev=>({...prev,...address}));}
   function patchDestination(address:LaneAddress){setDestination(prev=>({...prev,...address}));}
+
+  function chooseSavedLocation(which:'origin'|'destination',value:string){
+    const setLocationId=which==='origin'?setOriginLocationId:setDestinationLocationId;
+    const setAddress=which==='origin'?setOrigin:setDestination;
+    setLocationId(value);
+    if(!value){
+      setAddress(emptyAddress());
+      return;
+    }
+    const location=savedLocations.find(item=>String(item.id)===value);
+    if(location)setAddress(locationToAddress(location));
+  }
 
   async function rate(e:any){
     e.preventDefault();
@@ -30,7 +93,7 @@ export default function QuoteStudioPage(){
       const r:any=await api('/quotes/rate',{
         method:'POST',
         body:JSON.stringify({
-          customer_id:Number(f.get('customer_id')),
+          customer_id:Number(selectedCustomerId||f.get('customer_id')),
           origin:{
             address1:origin.address1,
             address2:origin.address2||null,
@@ -69,13 +132,20 @@ export default function QuoteStudioPage(){
     <div className="quotegrid">
       <Card>
         <form onSubmit={rate}>
-          <div className="sectiontitle"><MapPin/><div><h3>Lane information</h3><p>Origin and destination details</p></div></div>
-          <label>Customer<select name="customer_id" required>{customers.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select></label>
+          <div className="sectiontitle"><MapPin/><div><h3>Lane information</h3><p>Choose saved customer locations or search any verified address.</p></div></div>
+          <label>Customer
+            <select name="customer_id" required value={selectedCustomerId} onChange={e=>setSelectedCustomerId(Number(e.target.value))}>
+              {customers.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}
+            </select>
+          </label>
+          {locationsLoading&&<div className="savedLocationLoading"><Sparkles size={13}/>Loading saved customer locations…</div>}
           <div className="form2 quoteLaneGrid">
             <fieldset className="quoteAddressGroup">
               <legend>ORIGIN</legend>
-              <label>Street address
-                <AddressField required value={origin.address1} onValueChange={value=>setOrigin(prev=>({...prev,address1:value}))} onAddressSelected={patchOrigin} placeholder="Start typing the origin address…"/>
+              <SavedLocationPicker label="Saved customer location" locations={savedLocations} value={originLocationId} onChange={value=>chooseSavedLocation('origin',value)}/>
+              <div className="addressOrDivider"><span>or</span></div>
+              <label><span className="addressInputLabel"><Search size={12}/>Verified street address</span>
+                <AddressField required value={origin.address1} onValueChange={value=>{setOriginLocationId('');setOrigin(prev=>({...prev,address1:value}))}} onAddressSelected={address=>{setOriginLocationId('');patchOrigin(address)}} placeholder="Start typing the origin address…"/>
               </label>
               <div className="form3">
                 <label>City<input required value={origin.city} onChange={e=>setOrigin(prev=>({...prev,city:e.target.value}))} placeholder="City"/></label>
@@ -85,8 +155,10 @@ export default function QuoteStudioPage(){
             </fieldset>
             <fieldset className="quoteAddressGroup">
               <legend>DESTINATION</legend>
-              <label>Street address
-                <AddressField required value={destination.address1} onValueChange={value=>setDestination(prev=>({...prev,address1:value}))} onAddressSelected={patchDestination} placeholder="Start typing the destination address…"/>
+              <SavedLocationPicker label="Saved customer location" locations={savedLocations} value={destinationLocationId} onChange={value=>chooseSavedLocation('destination',value)}/>
+              <div className="addressOrDivider"><span>or</span></div>
+              <label><span className="addressInputLabel"><Search size={12}/>Verified street address</span>
+                <AddressField required value={destination.address1} onValueChange={value=>{setDestinationLocationId('');setDestination(prev=>({...prev,address1:value}))}} onAddressSelected={address=>{setDestinationLocationId('');patchDestination(address)}} placeholder="Start typing the destination address…"/>
               </label>
               <div className="form3">
                 <label>City<input required value={destination.city} onChange={e=>setDestination(prev=>({...prev,city:e.target.value}))} placeholder="City"/></label>
