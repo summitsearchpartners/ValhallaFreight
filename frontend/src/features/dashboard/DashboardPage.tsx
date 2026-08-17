@@ -1,0 +1,51 @@
+import {useEffect,useMemo,useState} from 'react';
+import {ArrowUpRight,Boxes,DollarSign,PackageCheck,Percent,Plus,Sparkles,Truck,Clock3,Upload,SlidersHorizontal,FileText,Info} from 'lucide-react';
+import {Link,useNavigate} from 'react-router-dom';
+import {BarChart,Bar,XAxis,YAxis,CartesianGrid,Tooltip,ResponsiveContainer} from 'recharts';
+import {Card,PageHead,Pill} from '../../components/UI';
+import {dashboardApi} from './api';
+import type {DashboardSummary,PerformanceResponse,RecentShipment,IntelligenceSummary} from './types';
+import ImportFreightModal from './components/ImportFreightModal';
+import MetricConfigModal,{type KpiKey} from './components/MetricConfigModal';
+import IntelligenceDrawer from './components/IntelligenceDrawer';
+
+const DEFAULT_KPIS:KpiKey[]=['active','revenue','gp','ontime'];
+const money=(v:number|undefined|null)=>`$${Number(v||0).toLocaleString(undefined,{maximumFractionDigits:0})}`;
+const iso=(d:Date)=>d.toISOString().slice(0,10);
+function presetRange(key:string){const end=new Date();const start=new Date(end);if(key==='1w')start.setDate(end.getDate()-6);else if(key==='1m')start.setMonth(end.getMonth()-1);else if(key==='6m')start.setMonth(end.getMonth()-6);else start.setFullYear(end.getFullYear()-1);return [iso(start),iso(end)] as const}
+function deltaText(value:number|null|undefined,suffix='% vs previous period'){if(value===null||value===undefined)return 'No prior-period comparison';return `${value>=0?'↑':'↓'} ${Math.abs(value).toFixed(1)}${suffix.startsWith('%')?'':' '}${suffix}`}
+function statusLabel(status:string){return status.replaceAll('_',' ').replace(/\b\w/g,x=>x.toUpperCase())}
+
+function KpiCard({label,value,delta,source,icon}:{label:string;value:string;delta:string;source:string;icon:any}){return <Card className="stat dashboardKpi"><div className="statrow"><span>{label}</span><div className="kpiIcons"><button className="kpiInfo" title={source}><Info size={13}/></button><div className="staticon">{icon}</div></div></div><strong>{value}</strong><small>{delta}</small><div className="kpiSource">Source: {source}</div></Card>}
+
+export default function DashboardPage(){
+ const nav=useNavigate();
+ const [summary,setSummary]=useState<DashboardSummary|null>(null),[performance,setPerformance]=useState<PerformanceResponse|null>(null),[recent,setRecent]=useState<RecentShipment[]>([]),[intel,setIntel]=useState<IntelligenceSummary|null>(null);
+ const [range,setRange]=useState('12m'),[customStart,setCustomStart]=useState(''),[customEnd,setCustomEnd]=useState('');
+ const [importOpen,setImportOpen]=useState(false),[metricOpen,setMetricOpen]=useState(false),[drawer,setDrawer]=useState<'exceptions'|'savings'|null>(null);
+ const [selectedKpis,setSelectedKpis]=useState<KpiKey[]>(()=>{try{const x=JSON.parse(localStorage.getItem('vf_command_center_kpis')||'null');return Array.isArray(x)&&x.length?x:DEFAULT_KPIS}catch{return DEFAULT_KPIS}});
+ function refresh(){dashboardApi.summary().then(setSummary);dashboardApi.recent(8).then(setRecent);dashboardApi.intelligence().then(setIntel)}
+ useEffect(()=>{refresh()},[]);
+ useEffect(()=>{if(range==='custom')return;const [s,e]=presetRange(range);setCustomStart(s);setCustomEnd(e);dashboardApi.performance(s,e).then(setPerformance)},[range]);
+ useEffect(()=>{localStorage.setItem('vf_command_center_kpis',JSON.stringify(selectedKpis))},[selectedKpis]);
+ function applyCustom(){if(customStart&&customEnd)dashboardApi.performance(customStart,customEnd).then(setPerformance)}
+ const kpis=useMemo(()=>{
+   const d=summary; if(!d)return {} as Record<KpiKey,any>;
+   return {
+    active:{label:'Active shipments',value:String(d.active_shipments),delta:deltaText(d.active_shipments_delta_pct),source:'Shipment records not in Delivered or Cancelled status',icon:<Truck/>},
+    revenue:{label:'Revenue this month',value:money(d.revenue_month),delta:deltaText(d.revenue_delta_pct),source:'Sum of customer charge on shipments created this calendar month',icon:<DollarSign/>},
+    gp:{label:'Gross profit',value:money(d.gross_profit_month),delta:`${Number(d.avg_margin_pct).toFixed(1)}% blended margin`,source:'Customer charge minus final carrier cost when available, otherwise quoted carrier cost',icon:<Percent/>},
+    ontime:{label:'Delivered on time',value:d.delivered_on_time_pct===null?'—':`${Number(d.delivered_on_time_pct).toFixed(1)}%`,delta:d.delivered_on_time_delta_points===null?`${d.delivered_qualifying_shipments} qualifying deliveries`:`${d.delivered_on_time_delta_points>=0?'↑':'↓'} ${Math.abs(d.delivered_on_time_delta_points).toFixed(1)} pts vs last month`,source:'Delivered shipments with an estimated delivery date; on-time means delivered on or before ETA',icon:<PackageCheck/>},
+    openQuotes:{label:'Open quotes',value:String(d.open_quotes),delta:'Current open quote records',source:'Quotes with status Open',icon:<FileText/>},
+    carrierCost:{label:'Carrier cost this month',value:money(d.carrier_cost_month),delta:'Final cost used when audited',source:'Final carrier cost when known, otherwise expected carrier cost',icon:<Boxes/>},
+    margin:{label:'Blended margin',value:`${Number(d.avg_margin_pct).toFixed(1)}%`,delta:'Current-month shipment margin',source:'Gross profit divided by customer revenue for current-month shipments',icon:<Percent/>}
+   } as Record<KpiKey,any>
+ },[summary]);
+ return <>
+ <PageHead eyebrow="OPERATIONS / COMMAND CENTER" title="Good morning, Thom." sub="Live operational and financial metrics from Valhalla Freight shipment and quote records." actions={<><button className="btn secondary" onClick={()=>setMetricOpen(true)}><SlidersHorizontal size={15}/>Customize metrics</button><button className="btn secondary" onClick={()=>setImportOpen(true)}><Upload size={15}/>Import freight</button><Link className="btn primary" to="/quotes"><Plus size={17}/>New quote</Link></>}/>
+ <div className="statgrid">{selectedKpis.map(key=>kpis[key]&&<KpiCard key={key} {...kpis[key]}/>)}</div>
+ <div className="dashgrid"><Card className="chartcard"><div className="cardhead dashboardChartHead"><div><span>NETWORK PERFORMANCE</span><h3>Revenue & gross profit</h3><p className="dataDefinition">Shipment financials for the selected creation-date range.</p></div><div className="rangeControls"><select value={range} onChange={e=>setRange(e.target.value)}><option value="1w">1 week</option><option value="1m">1 month</option><option value="6m">6 months</option><option value="12m">12 months</option><option value="custom">Custom dates</option></select>{range==='custom'&&<div className="customRange"><input type="date" value={customStart} onChange={e=>setCustomStart(e.target.value)}/><span>to</span><input type="date" value={customEnd} onChange={e=>setCustomEnd(e.target.value)}/><button className="btn secondary" onClick={applyCustom}>Apply</button></div>}</div></div><div className="realChart">{performance&&<ResponsiveContainer width="100%" height={260}><BarChart data={performance.points} margin={{top:10,right:10,left:0,bottom:5}}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="label" tick={{fontSize:10}}/><YAxis tick={{fontSize:10}} tickFormatter={v=>`$${Math.round(v/1000)}k`}/><Tooltip formatter={(value:any,name:any)=>[money(Number(value)),name==='revenue'?'Customer revenue':'Gross profit']}/><Bar dataKey="revenue" fill="#dbe7ec" radius={[3,3,0,0]}/><Bar dataKey="gross_profit" fill="#ef6c27" radius={[3,3,0,0]}/></BarChart></ResponsiveContainer>}</div><div className="chartlegend"><span><i className="dot solid"/>Customer revenue</span><span><i className="dot accent"/>Gross profit</span>{performance&&<span className="chartPeriod">{performance.start_date} → {performance.end_date} · {performance.bucket} buckets</span>}</div></Card>
+ <Card className="insight"><div className="spark"><Sparkles/></div><span>VALHALLA FREIGHT INTELLIGENCE</span><h3>{intel?.margin_exception_count?'Margin leakage detected':'Margin protection clear'}</h3><p>{intel?.margin_exception_count?`${intel.margin_exception_count} shipments have final carrier costs more than $75 above expected cost. Reviewing them could protect approximately ${money(intel.protected_gp)} in GP.`:'No audited shipments currently exceed the $75 carrier-cost variance threshold.'}</p><button className="btn dark" onClick={()=>setDrawer('exceptions')}>Review exceptions <ArrowUpRight size={15}/></button><button className="insightmetric intelligenceMetricButton" onClick={()=>setDrawer('savings')}><Boxes/><div><b>{Number(intel?.avg_opportunity_savings_pct||0).toFixed(1)}%</b><span>Avg. quote opportunity savings identified · {intel?.opportunity_count||0} quotes</span></div><ArrowUpRight size={14}/></button></Card></div>
+ <Card><div className="cardhead"><div><span>LIVE OPERATIONS</span><h3>Recent shipments</h3><p className="dataDefinition">Most recently created shipment records from the operational database.</p></div><Link to="/shipments">View all shipments →</Link></div>{recent.length?<table className="clickableRows"><thead><tr><th>Shipment</th><th>Customer</th><th>Lane</th><th>Carrier</th><th>Revenue</th><th>Status</th><th></th></tr></thead><tbody>{recent.map((s,i)=><tr key={s.id} onClick={()=>nav(`/shipments/${s.id}`)}><td><b>{s.shipment_number}</b><small className="tdsub"><Clock3 size={12}/>Created {new Date(s.created_at).toLocaleDateString()}</small></td><td>{s.customer_name}</td><td><b>{s.origin?.city||'—'}, {s.origin?.state||''}</b><small className="tdsub">→ {s.destination?.city||'—'}, {s.destination?.state||''}</small></td><td>{s.carrier_scac||s.carrier_name||'—'}</td><td><b>{money(s.customer_charge)}</b></td><td><Pill tone={s.status==='delivered'?'success':s.status==='out_for_delivery'?'warning':'info'}>{statusLabel(s.status)}</Pill></td><td><ArrowUpRight size={14}/></td></tr>)}</tbody></table>:<div className="dashboardEmpty"><Truck/><div><b>No shipment records yet</b><span>Book a quote or import freight to begin populating live operations and KPI metrics.</span></div></div>}</Card>
+ {importOpen&&<ImportFreightModal onClose={()=>setImportOpen(false)} onImported={refresh}/>} {metricOpen&&<MetricConfigModal selected={selectedKpis} onChange={setSelectedKpis} onClose={()=>setMetricOpen(false)}/>} {drawer&&intel&&<IntelligenceDrawer mode={drawer} data={intel} onClose={()=>setDrawer(null)}/>} </>
+}

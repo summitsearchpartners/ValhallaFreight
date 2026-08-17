@@ -61,7 +61,7 @@ export default function Layout({children}:{children:ReactNode}){
       </div>
       <nav>{nav.map(([section,items])=><div className="navsection" key={section}><span>{section}</span>{items.map(([Icon,label,path])=><NavLink key={path} to={path} end={path==='/' } title={collapsed?label:undefined}><Icon size={18}/><b>{label}</b></NavLink>)}</div>)}</nav>
       <div className="sidefoot"><ShieldCheck size={17}/><div><b>System healthy</b><span>All services operational</span></div></div>
-      <div className="sideVersion">VF TMS · v0.4.4</div>
+      <div className="sideVersion">VF TMS · v0.5.1</div>
     </aside>
 
     <main>

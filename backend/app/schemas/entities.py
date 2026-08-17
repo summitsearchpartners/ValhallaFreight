@@ -53,6 +53,11 @@ class QuoteResponse(BaseModel):
     options: list[RateOption]
     expires_at: datetime
 
+
+class DirectShipmentCreate(QuoteRequest):
+    carrier_id: int
+    pickup_date: date | None = None
+
 class ShipmentCreate(BaseModel):
     quote_number: str
     carrier_id: int

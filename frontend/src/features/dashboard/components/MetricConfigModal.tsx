@@ -1,0 +1,7 @@
+import {X,SlidersHorizontal} from 'lucide-react';
+export type KpiKey='active'|'revenue'|'gp'|'ontime'|'openQuotes'|'carrierCost'|'margin';
+export const ALL_KPIS:[KpiKey,string][]=[['active','Active shipments'],['revenue','Revenue this month'],['gp','Gross profit'],['ontime','Delivered on time'],['openQuotes','Open quotes'],['carrierCost','Carrier cost this month'],['margin','Blended margin']];
+export default function MetricConfigModal({selected,onChange,onClose}:{selected:KpiKey[];onChange:(x:KpiKey[])=>void;onClose:()=>void}){
+ function toggle(key:KpiKey){if(selected.includes(key)){if(selected.length>1)onChange(selected.filter(x=>x!==key))}else if(selected.length<4)onChange([...selected,key])}
+ return <div className="modalShade"><div className="entityModal compact"><div className="entityModalHead"><div className="entityModalIcon"><SlidersHorizontal/></div><div><span>COMMAND CENTER</span><h2>Customize KPI metrics</h2></div><button onClick={onClose}><X/></button></div><div className="metricConfig"><p>Choose up to four metrics for this Command Center. This development version stores the preference in this browser; organization-wide dashboards come later.</p>{ALL_KPIS.map(([key,label])=><label key={key} className="metricCheck"><input type="checkbox" checked={selected.includes(key)} onChange={()=>toggle(key)}/><span>{label}</span></label>)}</div><div className="entityModalFoot"><button className="btn primary" onClick={onClose}>Done</button></div></div></div>
+}

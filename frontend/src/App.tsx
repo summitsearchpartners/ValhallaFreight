@@ -7,6 +7,10 @@ import Login from './pages/Login';
 import {Shipments,Carriers,Pricing,Prospects,Analytics,Billing} from './pages/Tables';
 import CustomersPage from './features/customers/CustomersPage';
 import CustomerDetailPage from './features/customers/CustomerDetailPage';
+import ShipmentDetailPage from './features/shipments/ShipmentDetailPage';
+import CreateShipmentPage from './features/shipments/CreateShipmentPage';
+import QuoteBucketPage from './features/quotes/QuoteBucketPage';
+import QuoteDetailPage from './features/quotes/QuoteDetailPage';
 import {useAuth} from './context/AuthContext';
 
 function Protected({children}:{children:ReactNode}){
@@ -17,5 +21,5 @@ function Protected({children}:{children:ReactNode}){
 }
 export default function App(){return <Routes>
   <Route path="/login" element={<Login/>}/>
-  <Route path="/*" element={<Protected><Layout><Routes><Route path="/" element={<Dashboard/>}/><Route path="/quotes" element={<Quotes/>}/><Route path="/shipments" element={<Shipments/>}/><Route path="/customers" element={<CustomersPage/>}/><Route path="/customers/:customerId" element={<CustomerDetailPage/>}/><Route path="/carriers" element={<Carriers/>}/><Route path="/pricing" element={<Pricing/>}/><Route path="/analytics" element={<Analytics/>}/><Route path="/prospects" element={<Prospects/>}/><Route path="/billing" element={<Billing/>}/></Routes></Layout></Protected>}/>
+  <Route path="/*" element={<Protected><Layout><Routes><Route path="/" element={<Dashboard/>}/><Route path="/quotes" element={<Quotes/>}/><Route path="/quotes/bucket" element={<QuoteBucketPage/>}/><Route path="/quotes/:quoteRef" element={<QuoteDetailPage/>}/><Route path="/shipments" element={<Shipments/>}/><Route path="/shipments/new" element={<CreateShipmentPage/>}/><Route path="/shipments/:shipmentId" element={<ShipmentDetailPage/>}/><Route path="/customers" element={<CustomersPage/>}/><Route path="/customers/:customerId" element={<CustomerDetailPage/>}/><Route path="/carriers" element={<Carriers/>}/><Route path="/pricing" element={<Pricing/>}/><Route path="/analytics" element={<Analytics/>}/><Route path="/prospects" element={<Prospects/>}/><Route path="/billing" element={<Billing/>}/></Routes></Layout></Protected>}/>
 </Routes>}

@@ -145,3 +145,10 @@ Dedicated Notes, Google Places address autocomplete readiness, system-generated 
 
 ## v0.4.4
 Quote Studio origin and destination now use shared Google Places address autocomplete and automatically populate City, State, and ZIP.
+
+
+## v0.5.1
+Quote-to-shipment workflow: Quote Bucket, quote detail/approval, rate selection persistence, Command Center quote drill-down, and direct known-carrier shipment creation.
+
+## v0.5.2
+Fixed Google Places structured address selection so City, State, ZIP, and Country remain populated after choosing a suggestion in Quote Studio and direct shipment creation.

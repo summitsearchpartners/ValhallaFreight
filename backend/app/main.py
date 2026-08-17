@@ -8,7 +8,7 @@ from app.api.routes import carriers, pricing, quotes, shipments, dashboard, pros
 from app.domains.customers import routes as customers
 from app.api.deps import get_current_user
 
-app = FastAPI(title=settings.app_name, version="0.4.1", description="Valhalla Freight LTL-first Transportation Management System")
+app = FastAPI(title=settings.app_name, version="0.5.1", description="Valhalla Freight LTL-first Transportation Management System")
 app.add_middleware(CORSMiddleware, allow_origins=[x.strip() for x in settings.cors_origins.split(',')], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 @app.on_event("startup")
