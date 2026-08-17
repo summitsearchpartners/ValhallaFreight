@@ -105,3 +105,82 @@
 .inlineError{margin-top:12px;padding:10px 12px;border:1px solid #f0c9bd;background:#fff4ef;color:#9d472c;border-radius:8px;font-size:9px;line-height:1.45}.selectrate:disabled{opacity:.55;cursor:not-allowed}.quoteDetailHead{display:flex;align-items:center;gap:14px;margin-bottom:18px}.quoteDetailHead>div{flex:1}.quoteDetailHead>div>span{font-size:8px;letter-spacing:1px;font-weight:800;color:#87959e}.quoteDetailHead h1{font-family:Manrope;font-size:25px;margin:3px 0}.quoteDetailHead p{font-size:9px;color:#788992;margin:0}.quoteDetailGrid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,.72fr);gap:15px}.quoteDetailGrid>div{display:flex;flex-direction:column;gap:15px}.quoteApprovalCard{position:sticky;top:84px}.approvalSummary{display:flex;flex-direction:column;padding:14px;border-radius:10px;background:#f8fafb;border:1px solid #e3eaed;margin-bottom:14px}.approvalSummary span{font-size:8px;color:#84949c}.approvalSummary b{font-size:11px;margin-top:5px}.approvalSummary strong{font-family:Manrope;font-size:24px;color:#172933;margin-top:8px}.approvalSummary small{font-size:8px;color:#7b8b94;margin-top:4px}.approvedState{display:grid;grid-template-columns:24px 1fr;gap:4px 8px;padding:14px;border-radius:9px;background:#edf8f3;color:#18765a}.approvedState svg{grid-row:1/3;width:18px}.approvedState b{font-size:10px}.approvedState span{font-size:8px;color:#518473}.empty.compact{padding:24px 10px}.empty.compact>svg{color:var(--accent);margin-bottom:6px}.directShipmentCard{padding:22px;overflow:visible}.directShipmentCard form{max-width:1180px}.directPickup{max-width:520px}.recordRows b svg{vertical-align:middle;margin-right:3px}.toolbar select{min-width:170px}.quoteDetailGrid .rate{grid-template-columns:1.25fr 1fr auto}.quoteDetailGrid .rate.best{border-color:#ef6c2788;background:#fff8f3}
 @media(max-width:1100px){.quoteDetailGrid{grid-template-columns:1fr}.quoteApprovalCard{position:static}}
 .approvedState .btn{grid-column:2;margin-top:7px;justify-self:start}
+
+
+/* v0.5.3 — full-width operational workspaces */
+.content.contentWide.quoteWorkspaceContent,
+.content.contentWide.shipmentWorkspaceContent{max-width:none;margin:0;padding:34px 42px 52px}
+
+.quoteWorkspaceContent .pagehead{margin-bottom:28px}
+.quoteWorkspaceContent .pagehead h1{font-size:34px}
+.quoteWorkspaceContent .pagehead p{font-size:14px}
+.quoteWorkspaceContent .quotegrid{grid-template-columns:minmax(0,1.45fr) minmax(440px,.75fr);gap:22px;width:100%}
+.quoteWorkspaceContent .quotegrid>.card,
+.quoteWorkspaceContent .ratepanel{padding:28px}
+.quoteWorkspaceContent .sectiontitle{padding-bottom:16px;margin-bottom:20px}
+.quoteWorkspaceContent .sectiontitle h3{font-size:15px}
+.quoteWorkspaceContent .sectiontitle p{font-size:11px}
+.quoteWorkspaceContent label{font-size:11px;gap:7px}
+.quoteWorkspaceContent input,
+.quoteWorkspaceContent select{font-size:12px;padding:11px 12px}
+.quoteWorkspaceContent .form2{gap:18px;margin-top:18px}
+.quoteWorkspaceContent .form3{gap:9px}
+.quoteWorkspaceContent .form6{gap:10px}
+.quoteWorkspaceContent legend{font-size:10px}
+.quoteWorkspaceContent .btn.wide{font-size:12px;padding:14px;margin-top:22px}
+.quoteWorkspaceContent .cardhead span{font-size:10px}
+.quoteWorkspaceContent .cardhead h3{font-size:17px}
+.quoteWorkspaceContent .empty{padding:70px 24px}
+.quoteWorkspaceContent .empty h3{font-size:17px}
+.quoteWorkspaceContent .empty p{font-size:11px;max-width:430px}
+.quoteWorkspaceContent .rate{padding:17px;grid-template-columns:1.25fr 1fr auto;gap:12px}
+.quoteWorkspaceContent .carrierlogo{width:42px;height:42px;font-size:10px}
+.quoteWorkspaceContent .ratecarrier b{font-size:12px}
+.quoteWorkspaceContent .ratecarrier span,
+.quoteWorkspaceContent .rateprice span{font-size:9px}
+.quoteWorkspaceContent .rateprice strong{font-size:20px}
+.quoteWorkspaceContent .selectrate{font-size:10px;padding:9px 12px}
+
+.shipmentWorkspaceContent .shipmentDetailHead{margin-bottom:24px;gap:20px}
+.shipmentWorkspaceContent .shipmentDetailHead h1{font-size:32px}
+.shipmentWorkspaceContent .shipmentDetailHead p{font-size:11px}
+.shipmentWorkspaceContent .shipmentDetailHead>div>span{font-size:9px}
+.shipmentWorkspaceContent .shipmentKpis{gap:16px;margin-bottom:20px}
+.shipmentWorkspaceContent .shipmentKpis .card{padding:21px}
+.shipmentWorkspaceContent .shipmentKpis span{font-size:10px}
+.shipmentWorkspaceContent .shipmentKpis strong{font-size:23px;margin-top:8px}
+.shipmentWorkspaceContent .shipmentDetailGrid{grid-template-columns:minmax(0,1.85fr) minmax(360px,.72fr);gap:20px}
+.shipmentWorkspaceContent .shipmentDetailGrid>div{gap:20px}
+.shipmentWorkspaceContent .shipmentSection{padding:24px}
+.shipmentWorkspaceContent .sectionHead h3{font-size:16px;margin:0}
+.shipmentWorkspaceContent .sectionHead p{font-size:10px;margin-top:5px}
+.shipmentWorkspaceContent .laneDetail{grid-template-columns:1fr 56px 1fr;gap:14px;margin-top:18px}
+.shipmentWorkspaceContent .laneDetail>div:not(.laneArrow){grid-template-columns:22px 1fr;column-gap:9px}
+.shipmentWorkspaceContent .laneDetail svg{width:19px;height:19px}
+.shipmentWorkspaceContent .laneDetail span{font-size:9px}
+.shipmentWorkspaceContent .laneDetail b{font-size:13px;margin-top:5px}
+.shipmentWorkspaceContent .laneDetail p{font-size:10px;margin-top:4px}
+.shipmentWorkspaceContent .shipmentDates{gap:14px;margin-top:20px;padding-top:20px}
+.shipmentWorkspaceContent .shipmentDates span{font-size:9px}
+.shipmentWorkspaceContent .shipmentDates b{font-size:11px}
+.shipmentWorkspaceContent .recordRows>div{padding:13px 0}
+.shipmentWorkspaceContent .recordRows span{font-size:10px}
+.shipmentWorkspaceContent .recordRows b{font-size:11px}
+.shipmentWorkspaceContent .trackingRow{grid-template-columns:16px 1fr;gap:11px;padding-bottom:22px}
+.shipmentWorkspaceContent .trackingRow b{font-size:11px}
+.shipmentWorkspaceContent .trackingRow span,
+.shipmentWorkspaceContent .trackingRow p{font-size:9px}
+.shipmentWorkspaceContent .dashboardEmpty{min-height:155px}
+.shipmentWorkspaceContent .dashboardEmpty b{font-size:12px}
+.shipmentWorkspaceContent .dashboardEmpty span{font-size:9px}
+
+@media(max-width:1250px){
+ .content.contentWide.quoteWorkspaceContent,.content.contentWide.shipmentWorkspaceContent{padding:28px}
+ .quoteWorkspaceContent .quotegrid{grid-template-columns:1fr}
+ .shipmentWorkspaceContent .shipmentDetailGrid{grid-template-columns:1fr}
+}
+@media(max-width:760px){
+ .content.contentWide.quoteWorkspaceContent,.content.contentWide.shipmentWorkspaceContent{padding:18px}
+ .quoteWorkspaceContent .pagehead h1,.shipmentWorkspaceContent .shipmentDetailHead h1{font-size:25px}
+ .shipmentWorkspaceContent .shipmentKpis{grid-template-columns:1fr 1fr}
+}

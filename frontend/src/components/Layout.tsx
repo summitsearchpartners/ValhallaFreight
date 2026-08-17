@@ -32,6 +32,8 @@ export default function Layout({children}:{children:ReactNode}){
   const navigate=useNavigate();
   const location=useLocation();
   const wideCustomerWorkspace=/^\/customers\/\d+/.test(location.pathname);
+  const wideQuoteWorkspace=location.pathname==='/quotes';
+  const wideShipmentWorkspace=/^\/shipments\/\d+/.test(location.pathname);
   const [collapsed,setCollapsed]=useState(false);
   const [searchOpen,setSearchOpen]=useState(false);
   const [search,setSearch]=useState('');
@@ -61,7 +63,7 @@ export default function Layout({children}:{children:ReactNode}){
       </div>
       <nav>{nav.map(([section,items])=><div className="navsection" key={section}><span>{section}</span>{items.map(([Icon,label,path])=><NavLink key={path} to={path} end={path==='/' } title={collapsed?label:undefined}><Icon size={18}/><b>{label}</b></NavLink>)}</div>)}</nav>
       <div className="sidefoot"><ShieldCheck size={17}/><div><b>System healthy</b><span>All services operational</span></div></div>
-      <div className="sideVersion">VF TMS · v0.5.1</div>
+      <div className="sideVersion">VF TMS · v0.5.3</div>
     </aside>
 
     <main>
@@ -92,7 +94,7 @@ export default function Layout({children}:{children:ReactNode}){
           </div>
         </div>
       </header>
-      <div className={`content ${wideCustomerWorkspace?'contentWide customerWorkspaceContent':''}`}>{children}</div>
+      <div className={`content ${wideCustomerWorkspace?'contentWide customerWorkspaceContent':''} ${wideQuoteWorkspace?'contentWide quoteWorkspaceContent':''} ${wideShipmentWorkspace?'contentWide shipmentWorkspaceContent':''}`}>{children}</div>
     </main>
 
     {searchOpen&&<div className="commandOverlay" onMouseDown={e=>{if(e.currentTarget===e.target)setSearchOpen(false)}}>

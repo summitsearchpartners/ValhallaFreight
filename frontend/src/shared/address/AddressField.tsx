@@ -78,11 +78,8 @@ export default function AddressField({value,onValueChange,onAddressSelected,plac
     await place.fetchFields({fields:['addressComponents','formattedAddress']});
     if(place.addressComponents){
       const structured=extractStructuredAddress(place.addressComponents);
-      // Update the visible street value first, then commit the full structured
-      // address. The structured callback must run last so City/State/ZIP are
-      // not overwritten by a stale parent address object.
-      onValueChange(structured.address1||place.formattedAddress||value);
       onAddressSelected(structured);
+      onValueChange(structured.address1||place.formattedAddress||value);
     }
     setSuggestions([]);setOpen(false);
     sessionToken.current=placesLib?new placesLib.AutocompleteSessionToken():null;

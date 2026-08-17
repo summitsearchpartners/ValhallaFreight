@@ -150,5 +150,6 @@ Quote Studio origin and destination now use shared Google Places address autocom
 ## v0.5.1
 Quote-to-shipment workflow: Quote Bucket, quote detail/approval, rate selection persistence, Command Center quote drill-down, and direct known-carrier shipment creation.
 
-## v0.5.2
-Fixed Google Places structured address selection so City, State, ZIP, and Country remain populated after choosing a suggestion in Quote Studio and direct shipment creation.
+
+## v0.5.3 — Workspace readability
+Quote Studio and Shipment Detail now use full-width operational workspaces with larger typography, controls, financial KPIs, lane data, tracking details, and carrier-rate cards for better use of desktop screens.
