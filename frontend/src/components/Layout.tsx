@@ -1,24 +1,18 @@
 import {NavLink,useLocation,useNavigate} from 'react-router-dom';
-import {LayoutDashboard, Calculator, Truck, Users, Building2, SlidersHorizontal, BarChart3, FileSearch, ReceiptText, ShieldCheck, Bell, Search, ChevronDown, ChevronLeft, ChevronRight, LogOut, Command, CircleDollarSign, MapPin, PackageSearch, Settings, UserRound, CheckCheck} from 'lucide-react';
+import {LayoutDashboard, Calculator, Truck, Users, Building2, SlidersHorizontal, BarChart3, FileSearch, ReceiptText, ShieldCheck, Bell, Search, ChevronDown, ChevronLeft, ChevronRight, LogOut, Command, CircleDollarSign, PackageSearch, Settings, UserRound, CheckCheck, RadioTower, MapPinned, WalletCards, ShieldAlert, BrainCircuit, PlugZap, Globe2, Workflow} from 'lucide-react';
 import {useEffect,useMemo,useRef,useState,type ReactNode} from 'react';
 import {useAuth} from '../context/AuthContext';
 
 const nav=[
-  ['Operations',[[LayoutDashboard,'Command Center','/'],[Calculator,'Quote Studio','/quotes'],[Truck,'Shipments','/shipments']]],
-  ['Network',[[Users,'Customers','/customers'],[Building2,'Carriers','/carriers'],[SlidersHorizontal,'Pricing Engine','/pricing']]],
-  ['Intelligence',[[BarChart3,'Analytics','/analytics'],[FileSearch,'Prospect Analysis','/prospects'],[ReceiptText,'Billing & Audit','/billing']]],
+  ['Operations',[[LayoutDashboard,'Command Center','/'],[Calculator,'Quote Studio','/quotes'],[Truck,'Shipments','/shipments'],[MapPinned,'Visibility Center','/visibility'],[Workflow,'Automation Center','/automation']]],
+  ['Network',[[Users,'Customers','/customers'],[Building2,'Carrier 360','/carriers'],[RadioTower,'Capacity Center','/capacity'],[SlidersHorizontal,'Pricing Engine','/pricing']]],
+  ['Finance & Risk',[[WalletCards,'Finance Center','/finance'],[ShieldAlert,'Claims Center','/claims']]],
+  ['Intelligence',[[BrainCircuit,'Valhalla Intelligence','/intelligence'],[BarChart3,'Analytics','/analytics'],[FileSearch,'Prospect Analysis','/prospects']]],
+  ['Administration',[[PlugZap,'Integration Hub','/integrations'],[Globe2,'Customer Portal','/portal-admin']]],
 ] as const;
 
 const searchItems=[
-  {label:'Command Center',detail:'Operations overview',path:'/',icon:LayoutDashboard},
-  {label:'Quote Studio',detail:'Create and compare LTL rates',path:'/quotes',icon:Calculator},
-  {label:'Shipments',detail:'Track active and completed freight',path:'/shipments',icon:PackageSearch},
-  {label:'Customers',detail:'Accounts, locations and contacts',path:'/customers',icon:Users},
-  {label:'Carriers',detail:'Carrier network and performance',path:'/carriers',icon:Building2},
-  {label:'Pricing Engine',detail:'Markup, margin and lane rules',path:'/pricing',icon:CircleDollarSign},
-  {label:'Analytics',detail:'Network and customer intelligence',path:'/analytics',icon:BarChart3},
-  {label:'Prospect Analysis',detail:'Analyze prospect freight history',path:'/prospects',icon:FileSearch},
-  {label:'Billing & Audit',detail:'Invoice and carrier cost controls',path:'/billing',icon:ReceiptText},
+  {label:'Command Center',detail:'Operations overview',path:'/',icon:LayoutDashboard},{label:'Quote Studio',detail:'Create and compare rates',path:'/quotes',icon:Calculator},{label:'Shipments',detail:'Shipment control tower',path:'/shipments',icon:PackageSearch},{label:'Visibility Center',detail:'Tracking and ETA exceptions',path:'/visibility',icon:MapPinned},{label:'Automation Center',detail:'Six pillars of LTL automation',path:'/automation',icon:Workflow},{label:'Customers',detail:'Customer 360',path:'/customers',icon:Users},{label:'Carrier 360',detail:'Carrier compliance and performance',path:'/carriers',icon:Building2},{label:'Capacity Center',detail:'Load boards and digital freight matching',path:'/capacity',icon:RadioTower},{label:'Pricing Engine',detail:'Tariffs, contracts and margin rules',path:'/pricing',icon:CircleDollarSign},{label:'Finance Center',detail:'Freight audit, AR and AP',path:'/finance',icon:WalletCards},{label:'Claims Center',detail:'Cargo claims and insurance',path:'/claims',icon:ShieldAlert},{label:'Valhalla Intelligence',detail:'Operational intelligence and exceptions',path:'/intelligence',icon:BrainCircuit},{label:'Analytics',detail:'Network analytics',path:'/analytics',icon:BarChart3},{label:'Prospect Analysis',detail:'Analyze prospect freight history',path:'/prospects',icon:FileSearch},{label:'Integration Hub',detail:'Provider adapters and health',path:'/integrations',icon:PlugZap},{label:'Customer Portal',detail:'Branded self-service workspace',path:'/portal-admin',icon:Globe2},
 ];
 
 const notifications=[
@@ -34,6 +28,7 @@ export default function Layout({children}:{children:ReactNode}){
   const wideCustomerWorkspace=/^\/customers\/\d+/.test(location.pathname);
   const wideQuoteWorkspace=location.pathname==='/quotes';
   const wideShipmentWorkspace=/^\/shipments\/\d+/.test(location.pathname);
+  const widePlatformWorkspace=['/carriers','/capacity','/visibility','/automation','/finance','/claims','/intelligence','/integrations','/portal-admin'].some(p=>location.pathname.startsWith(p));
   const [collapsed,setCollapsed]=useState(false);
   const [searchOpen,setSearchOpen]=useState(false);
   const [search,setSearch]=useState('');
@@ -58,12 +53,12 @@ export default function Layout({children}:{children:ReactNode}){
     <aside className="sidebar">
       <div className="brand">
         <img className="brandLogo" src="/valhalla-freight-logo.png" alt="Valhalla Freight"/>
-        <div className="brandWords"><strong>Valhalla Freight</strong><small>Transportation Management System</small></div>
+        <div className="brandWords"><strong>Valhalla Freight</strong><small>Transportation Operating System</small></div>
         <button className="sideCollapse" onClick={()=>setCollapsed(v=>!v)} title={collapsed?'Expand navigation':'Collapse navigation'}>{collapsed?<ChevronRight size={16}/>:<ChevronLeft size={16}/>}</button>
       </div>
       <nav>{nav.map(([section,items])=><div className="navsection" key={section}><span>{section}</span>{items.map(([Icon,label,path])=><NavLink key={path} to={path} end={path==='/' } title={collapsed?label:undefined}><Icon size={18}/><b>{label}</b></NavLink>)}</div>)}</nav>
       <div className="sidefoot"><ShieldCheck size={17}/><div><b>System healthy</b><span>All services operational</span></div></div>
-      <div className="sideVersion">VF TMS · v0.5.4</div>
+      <div className="sideVersion">VF TOS · v0.6.0</div>
     </aside>
 
     <main>
@@ -94,7 +89,7 @@ export default function Layout({children}:{children:ReactNode}){
           </div>
         </div>
       </header>
-      <div className={`content ${wideCustomerWorkspace?'contentWide customerWorkspaceContent':''} ${wideQuoteWorkspace?'contentWide quoteWorkspaceContent':''} ${wideShipmentWorkspace?'contentWide shipmentWorkspaceContent':''}`}>{children}</div>
+      <div className={`content ${wideCustomerWorkspace?'contentWide customerWorkspaceContent':''} ${wideQuoteWorkspace?'contentWide quoteWorkspaceContent':''} ${wideShipmentWorkspace?'contentWide shipmentWorkspaceContent':''} ${widePlatformWorkspace?'contentWide platformWorkspaceContent':''}`}>{children}</div>
     </main>
 
     {searchOpen&&<div className="commandOverlay" onMouseDown={e=>{if(e.currentTarget===e.target)setSearchOpen(false)}}>

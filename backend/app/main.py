@@ -8,8 +8,14 @@ from app.services.seed import seed
 from app.api.routes import carriers, pricing, quotes, shipments, dashboard, prospects, auth
 from app.domains.customers import routes as customers
 from app.api.deps import get_current_user
+from app.domains.carriers import routes as carrier360
+from app.domains.capacity import routes as capacity
+from app.domains.finance import routes as finance
+from app.domains.claims import routes as claims
+from app.domains.integrations import routes as integrations
+from app.domains.intelligence import routes as intelligence
 
-app = FastAPI(title=settings.app_name, version="0.5.4", description="Valhalla Freight LTL-first Transportation Management System")
+app = FastAPI(title=settings.app_name, version="0.6.0", description="Valhalla Freight Transportation Operating System")
 app.add_middleware(CORSMiddleware, allow_origins=[x.strip() for x in settings.cors_origins.split(',')], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 @app.on_event("startup")
@@ -34,3 +40,10 @@ app.include_router(pricing.router, prefix="/api/v1", dependencies=[Depends(get_c
 app.include_router(quotes.router, prefix="/api/v1", dependencies=[Depends(get_current_user)])
 app.include_router(shipments.router, prefix="/api/v1", dependencies=[Depends(get_current_user)])
 app.include_router(prospects.router, prefix="/api/v1", dependencies=[Depends(get_current_user)])
+
+app.include_router(carrier360.router, prefix="/api/v1", dependencies=[Depends(get_current_user)])
+app.include_router(capacity.router, prefix="/api/v1", dependencies=[Depends(get_current_user)])
+app.include_router(finance.router, prefix="/api/v1", dependencies=[Depends(get_current_user)])
+app.include_router(claims.router, prefix="/api/v1", dependencies=[Depends(get_current_user)])
+app.include_router(integrations.router, prefix="/api/v1", dependencies=[Depends(get_current_user)])
+app.include_router(intelligence.router, prefix="/api/v1", dependencies=[Depends(get_current_user)])

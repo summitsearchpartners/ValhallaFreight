@@ -2,11 +2,11 @@
 
 **Built for the Long Haul. Driven by Honor.**
 
-Valhalla Freight is an LTL-first Transportation Management System foundation designed around the complete brokerage lifecycle:
+Valhalla Freight is an Transportation Operating System foundation with LTL-first brokerage execution and multi-mode expansion architecture designed around the complete brokerage lifecycle:
 
-**Quote → Book → Dispatch → Track → Deliver → Audit → Invoice → Analyze**
+**Quote → Sell → Book → Source → Dispatch → Track → Deliver → Audit → Invoice → Pay → Analyze → Optimize**
 
-This repository contains a Dockerized React/TypeScript frontend, Python FastAPI backend and PostgreSQL data layer. The v0.2 build adds authenticated access and Valhalla Freight branding while preserving the production-oriented foundation: carrier responses are normalized behind a rating layer, customer pricing is rule-driven, shipment data is structured for analytics, and integrations can be replaced without redesigning the operating application.
+This repository contains a Dockerized React/TypeScript frontend, Python FastAPI backend and PostgreSQL data layer. The v0.6 build expands the authenticated Valhalla Freight foundation into modular Customer 360, Carrier 360, Capacity, Visibility, Finance, Claims, Intelligence, Integration Hub and Customer Portal workspaces while preserving: carrier responses are normalized behind a rating layer, customer pricing is rule-driven, shipment data is structured for analytics, and integrations can be replaced without redesigning the operating application.
 
 ## What is already in this build
 
@@ -17,6 +17,15 @@ This repository contains a Dockerized React/TypeScript frontend, Python FastAPI 
 - Valhalla Freight command-center dashboard
 - Professional responsive operations UI
 - Customer master data
+
+- Carrier 360 with compliance, authority, terminals, contacts and performance
+- Capacity Center with digital freight matching/load-board adapter framework
+- Visibility Center with delivery-commitment monitoring
+- Finance Center with freight-audit variance queue and approve/dispute workflow
+- Claims Center with shipment-linked claim records
+- Valhalla Freight Intelligence with database-derived operational insights
+- Integration Hub covering carrier connectivity, rate intelligence, load boards, visibility, onboarding, accounting, payments, claims and CRM
+- Customer Portal administration foundation over the same APIs
 - Carrier network and connectivity status
 - LTL Quote Studio
 - Carrier-independent normalized rate model
