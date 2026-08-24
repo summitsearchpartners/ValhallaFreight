@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     dayton_api_username: str = ""
     dayton_api_password: str = ""
     dayton_api_account: str = ""
+    integration_secret_key: str = ""
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()

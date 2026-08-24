@@ -4,6 +4,7 @@ from app.models import Carrier, Customer, PricingRule, IntegrationConnection
 from app.schemas.entities import QuoteRequest, RateOption
 from app.integrations.carriers.dayton import DaytonAdapter
 from app.integrations.carriers.dayton.rating import get_rate as get_dayton_rate
+from app.integrations.carriers.dayton.client import DaytonClient
 from app.integrations.base.exceptions import CarrierIntegrationError
 
 TWOPLACES = Decimal("0.01")
@@ -39,11 +40,11 @@ class RatingEngine:
         options = []
         for idx, c in enumerate(carriers):
             # Dayton Freight becomes a real direct API rate automatically when credentials are configured.
-            if c.scac == "DAFG" and DaytonAdapter().configured():
+            if c.scac == "DAFG" and DaytonAdapter(self.db).configured():
                 try:
                     connection=self.db.query(IntegrationConnection).filter(IntegrationConnection.provider=="Dayton Freight").first()
                     cfg=(connection.settings or {}) if connection else {}
-                    live, _, _ = await get_dayton_rate(request, account=cfg.get("account"), direct_only=bool(cfg.get("direct_only",False)), terms=cfg.get("terms","ThirdPartyPrepaid"))
+                    live, _, _ = await get_dayton_rate(request, account=cfg.get("account"), direct_only=bool(cfg.get("direct_only",False)), terms=cfg.get("terms","ThirdPartyPrepaid"), client=DaytonClient.from_db(self.db))
                     carrier_cost = money(live.carrier_cost)
                     price = self._rule_price(customer, c, request, carrier_cost)
                     gp = money(price - carrier_cost)

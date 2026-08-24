@@ -11,9 +11,9 @@ def build_test_pickup_payload(*, destination_zip='45414'):
       'accessorials':[],'comments':'Valhalla Freight API test','pickupInstructions':None,'isTest':True,
     }
 
-async def create(payload: dict):
-    return await DaytonClient().request('PUT','/api/Pickup',json=payload)
-async def get(number: str):
-    return await DaytonClient().request('GET','/api/Pickup',params={'number':number})
-async def cancel(number: str):
-    return await DaytonClient().request('DELETE','/api/Pickup/Cancel',params={'number':number})
+async def create(payload: dict, client: DaytonClient|None=None):
+    return await (client or DaytonClient()).request('PUT','/api/Pickup',json=payload)
+async def get(number: str, client: DaytonClient|None=None):
+    return await (client or DaytonClient()).request('GET','/api/Pickup',params={'number':number})
+async def cancel(number: str, client: DaytonClient|None=None):
+    return await (client or DaytonClient()).request('DELETE','/api/Pickup/Cancel',params={'number':number})

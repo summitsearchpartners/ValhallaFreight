@@ -1,9 +1,9 @@
 from app.models.entities import Customer, Carrier, PricingRule, Quote, Shipment, TrackingEvent, Invoice, User
 from app.domains.customers.models import CustomerProfile, CustomerLocation, CustomerContact, CustomerActivity
-from app.models.platform import CarrierProfile, CarrierContact, CarrierTerminal, CarrierCompliance, CarrierComplianceDocumentVersion, CarrierServiceCapability, CarrierServiceArea, CarrierLane, CarrierContract, CarrierDocument, CarrierActivity, CapacityLoad, CapacityOffer, Claim, CarrierBill, IntegrationConnection, AuditEvent
+from app.models.platform import CarrierProfile, CarrierContact, CarrierTerminal, CarrierCompliance, CarrierComplianceDocumentVersion, CarrierServiceCapability, CarrierServiceArea, CarrierLane, CarrierContract, CarrierDocument, CarrierActivity, CapacityLoad, CapacityOffer, Claim, CarrierBill, IntegrationConnection, IntegrationCredential, AuditEvent
 
 __all__ = [
     'Customer','Carrier','PricingRule','Quote','Shipment','TrackingEvent','Invoice','User',
     'CustomerProfile','CustomerLocation','CustomerContact','CustomerActivity',
-    'CarrierProfile','CarrierContact','CarrierTerminal','CarrierCompliance','CarrierComplianceDocumentVersion','CarrierServiceCapability','CarrierServiceArea','CarrierLane','CarrierContract','CarrierDocument','CarrierActivity','CapacityLoad','CapacityOffer','Claim','CarrierBill','IntegrationConnection','AuditEvent'
+    'CarrierProfile','CarrierContact','CarrierTerminal','CarrierCompliance','CarrierComplianceDocumentVersion','CarrierServiceCapability','CarrierServiceArea','CarrierLane','CarrierContract','CarrierDocument','CarrierActivity','CapacityLoad','CapacityOffer','Claim','CarrierBill','IntegrationConnection','IntegrationCredential','AuditEvent'
 ]

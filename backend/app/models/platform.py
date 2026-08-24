@@ -212,6 +212,15 @@ class IntegrationConnection(Base):
     last_error: Mapped[str | None] = mapped_column(Text)
     settings: Mapped[dict] = mapped_column(JSON, default=dict)
 
+class IntegrationCredential(Base):
+    __tablename__ = 'integration_credentials'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    integration_id: Mapped[int] = mapped_column(ForeignKey('integration_connections.id'), unique=True, index=True)
+    auth_type: Mapped[str] = mapped_column(String(40), default='none')
+    encrypted_payload: Mapped[str] = mapped_column(Text)
+    configured_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 class AuditEvent(Base):
     __tablename__ = 'audit_events'
     id: Mapped[int] = mapped_column(primary_key=True)

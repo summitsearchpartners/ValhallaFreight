@@ -4,11 +4,25 @@ from app.core.config import settings
 from app.integrations.base.exceptions import CarrierCredentialsMissing, CarrierRemoteError
 
 class DaytonClient:
-    def __init__(self):
-        self.base_url = settings.dayton_api_base_url.rstrip('/')
-        self.username = settings.dayton_api_username.strip()
-        self.password = settings.dayton_api_password
-        self.account = settings.dayton_api_account.strip()
+    def __init__(self, *, base_url: str|None=None, username: str|None=None, password: str|None=None, account: str|None=None):
+        self.base_url = (base_url or settings.dayton_api_base_url).rstrip('/')
+        self.username = (username if username is not None else settings.dayton_api_username).strip()
+        self.password = password if password is not None else settings.dayton_api_password
+        self.account = (account if account is not None else settings.dayton_api_account).strip()
+
+    @classmethod
+    def from_db(cls, db):
+        # Database-managed credentials are preferred; .env remains a backward-compatible fallback.
+        from app.integrations.service import get_dayton_connection, credential_payload
+        row=get_dayton_connection(db)
+        cfg=row.settings or {}
+        creds=credential_payload(db,row.id)
+        return cls(
+            base_url=cfg.get('base_url') or settings.dayton_api_base_url,
+            username=creds.get('username') if creds.get('username') is not None else settings.dayton_api_username,
+            password=creds.get('password') if creds.get('password') is not None else settings.dayton_api_password,
+            account=cfg.get('account') or settings.dayton_api_account,
+        )
 
     @property
     def has_credentials(self) -> bool:
@@ -16,7 +30,7 @@ class DaytonClient:
 
     def require_credentials(self):
         if not self.has_credentials:
-            raise CarrierCredentialsMissing('Dayton Freight API credentials are not configured. Add DAYTON_API_USERNAME and DAYTON_API_PASSWORD to .env.')
+            raise CarrierCredentialsMissing('Dayton Freight API credentials are not configured. Open Integration Hub → Dayton Freight → Credentials & Authentication.')
 
     async def request(self, method: str, path: str, *, params=None, json=None, require_auth: bool=True):
         if require_auth:

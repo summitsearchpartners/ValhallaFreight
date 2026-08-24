@@ -228,3 +228,17 @@ Shipment Control Tower now stores editable BOL reference and commodity informati
 - Fixed Import OpenAPI interaction and added import results.
 - Clarified configured vs live-ready Dayton status.
 - Kept Dayton Freight as the quick-access managed carrier adapter.
+
+## v0.8.2 — Secure Carrier API Credentials
+- Carrier API usernames/passwords can now be configured directly in Integration Hub.
+- Credentials are encrypted server-side before storage and are never returned to the browser.
+- Dayton Freight credentials configured in the UI take precedence over legacy `.env` values.
+- OpenAPI import discovers server URLs and security schemes and creates a configurable adapter candidate.
+- Generic imported adapters can store Basic Auth, API key, bearer token, and client credential profiles while their normalization adapter is developed.
+
+## v0.8.3 — Integration Credential Save & Provider Deletion
+
+- Fixed Dayton credential saves that could report a frontend `querySelector` error after the secure backend save completed.
+- Adapter state now refreshes immediately after save and clearly shows masked username/password-saved status.
+- Imported OpenAPI provider adapters can be permanently deleted through a typed danger-zone confirmation.
+- Built-in Dayton Freight adapter remains protected from accidental deletion.

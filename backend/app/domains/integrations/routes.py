@@ -4,8 +4,8 @@ from fastapi import APIRouter,Depends,HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.models import IntegrationConnection, Shipment, TrackingEvent, Carrier
-from app.integrations.service import get_dayton_connection, public_connection, audit, analyze_openapi
+from app.models import IntegrationConnection, IntegrationCredential, Shipment, TrackingEvent, Carrier
+from app.integrations.service import get_dayton_connection, public_connection, audit, analyze_openapi, public_credentials, save_credentials, delete_credentials, credential_payload
 from app.integrations.carriers.dayton import DaytonAdapter
 from app.integrations.carriers.dayton.client import DaytonClient
 from app.integrations.carriers.dayton.mapper import build_rate_payload, normalize_rate
@@ -19,6 +19,16 @@ class IntegrationUpdate(BaseModel):
     status:str|None=None
     environment:str|None=None
     settings:dict|None=None
+
+class IntegrationCredentialUpdate(BaseModel):
+    auth_type: str = 'none'
+    username: str | None = None
+    password: str | None = None
+    api_key: str | None = None
+    bearer_token: str | None = None
+    client_id: str | None = None
+    client_secret: str | None = None
+    headers: dict[str,str] | None = None
 
 class DaytonConfig(BaseModel):
     environment: str = 'sandbox'
@@ -66,6 +76,49 @@ def update(integration_id:int,payload:IntegrationUpdate,db:Session=Depends(get_d
     for k,v in payload.model_dump(exclude_unset=True).items(): setattr(row,k,v)
     db.commit();return {'ok':True}
 
+@router.get('/connection/{integration_id}/manage')
+def manage_connection(integration_id:int,db:Session=Depends(get_db)):
+    row=db.get(IntegrationConnection,integration_id)
+    if not row: raise HTTPException(404,'Integration not found')
+    return {'connection':public_connection(row),'credentials':public_credentials(db,row)}
+
+@router.get('/connection/{integration_id}/credentials')
+def get_credentials(integration_id:int,db:Session=Depends(get_db)):
+    row=db.get(IntegrationConnection,integration_id)
+    if not row: raise HTTPException(404,'Integration not found')
+    return public_credentials(db,row)
+
+@router.put('/connection/{integration_id}/credentials')
+def put_credentials(integration_id:int,payload:IntegrationCredentialUpdate,db:Session=Depends(get_db)):
+    row=db.get(IntegrationConnection,integration_id)
+    if not row: raise HTTPException(404,'Integration not found')
+    values=payload.model_dump(exclude_unset=True,exclude={'auth_type'})
+    save_credentials(db,row,payload.auth_type,values,merge=True)
+    audit(db,'integration_credentials_saved',{'provider':row.provider,'auth_type':payload.auth_type},entity_id=str(row.id))
+    return public_credentials(db,row)
+
+@router.delete('/connection/{integration_id}/credentials')
+def remove_credentials(integration_id:int,db:Session=Depends(get_db)):
+    row=db.get(IntegrationConnection,integration_id)
+    if not row: raise HTTPException(404,'Integration not found')
+    delete_credentials(db,row)
+    audit(db,'integration_credentials_removed',{'provider':row.provider},entity_id=str(row.id))
+    return {'ok':True,'credentials':public_credentials(db,row)}
+
+@router.delete('/connection/{integration_id}')
+def delete_connection(integration_id:int,db:Session=Depends(get_db)):
+    row=db.get(IntegrationConnection,integration_id)
+    if not row: raise HTTPException(404,'Integration not found')
+    if row.provider == 'Dayton Freight':
+        raise HTTPException(409,'Dayton Freight is a built-in Valhalla carrier adapter and cannot be deleted. Remove its credentials instead.')
+    provider=row.provider
+    credential=db.query(IntegrationCredential).filter(IntegrationCredential.integration_id==row.id).first()
+    if credential: db.delete(credential)
+    db.delete(row)
+    db.commit()
+    audit(db,'integration_adapter_deleted',{'provider':provider},entity_id=str(integration_id))
+    return {'ok':True,'deleted_provider':provider}
+
 @router.post('/connection/{integration_id}/test')
 async def test(integration_id:int,db:Session=Depends(get_db)):
     row=db.get(IntegrationConnection,integration_id)
@@ -78,15 +131,19 @@ async def test(integration_id:int,db:Session=Depends(get_db)):
 
 @router.get('/dayton')
 def dayton_status(db:Session=Depends(get_db)):
-    row=get_dayton_connection(db); client=DaytonClient(); adapter=DaytonAdapter()
-    settings=row.settings or {}
+    row=get_dayton_connection(db); client=DaytonClient.from_db(db); adapter=DaytonAdapter(db); creds=public_credentials(db,row)
+    settings_row=row.settings or {}
+    env_fallback=bool(client.has_credentials and not creds.get('configured'))
+    credential_source='Integration Hub secure store' if creds.get('configured') else ('Environment (.env)' if env_fallback else 'Not configured')
+    username_hint=creds.get('username_hint') or ((client.username[:3]+'••••') if client.username else None)
     return {
         **public_connection(row),
         'scac':'DAFG','adapter_installed':True,'credentials_configured':adapter.configured(),
-        'credential_source':'Environment (.env)','username_hint':(client.username[:3]+'••••') if client.username else None,
-        'account':client.account or settings.get('account'),
+        'credential_source':credential_source,'username_hint':username_hint,
+        'account':client.account or settings_row.get('account'),
         'base_url':client.base_url,
-        'auth_type':'Basic Authentication','username_limit_note':'Dayton API uses the first 10 characters of the web username.',
+        'auth_type':'Basic Authentication','auth_type_key':'basic_auth','username_limit_note':'Dayton API uses the first 10 characters of the web username.',
+        'credential_status':creds,
         'capability_details':[
           {'key':'rating','label':'Live LTL Rating','status':'ready'}, {'key':'pickup','label':'Pickup Create / Update / Cancel','status':'ready'},
           {'key':'tracking','label':'Tracking + History','status':'ready'}, {'key':'bol','label':'Electronic BOL + PDF','status':'ready'},
@@ -105,7 +162,7 @@ def configure_dayton(payload:DaytonConfig,db:Session=Depends(get_db)):
 
 @router.post('/dayton/test')
 async def test_dayton(db:Session=Depends(get_db)):
-    row=get_dayton_connection(db); adapter=DaytonAdapter()
+    row=get_dayton_connection(db); adapter=DaytonAdapter(db)
     try:
         result=await adapter.test_connection()
         row.last_sync_at=datetime.utcnow(); row.last_error=None
@@ -118,36 +175,36 @@ async def test_dayton(db:Session=Depends(get_db)):
         raise HTTPException(502,str(exc))
 
 @router.get('/dayton/accounts')
-async def dayton_accounts():
-    try: return await DaytonClient().request('GET','/api/Accounts')
+async def dayton_accounts(db:Session=Depends(get_db)):
+    try: return await DaytonClient.from_db(db).request('GET','/api/Accounts')
     except CarrierIntegrationError as exc: raise HTTPException(400,str(exc))
 
 @router.get('/dayton/accessorials')
-async def dayton_accessorials():
-    try: return await DaytonClient().request('GET','/api/Shipping/Accessorials')
+async def dayton_accessorials(db:Session=Depends(get_db)):
+    try: return await DaytonClient.from_db(db).request('GET','/api/Shipping/Accessorials')
     except CarrierIntegrationError as exc: raise HTTPException(400,str(exc))
 
 @router.get('/dayton/classes')
-async def dayton_classes():
-    try: return await DaytonClient().request('GET','/api/Shipping/classes')
+async def dayton_classes(db:Session=Depends(get_db)):
+    try: return await DaytonClient.from_db(db).request('GET','/api/Shipping/classes')
     except CarrierIntegrationError as exc: raise HTTPException(400,str(exc))
 
 @router.get('/dayton/service-centers')
-async def dayton_service_centers():
-    try: return await DaytonClient().request('GET','/api/ServiceCenters')
+async def dayton_service_centers(db:Session=Depends(get_db)):
+    try: return await DaytonClient.from_db(db).request('GET','/api/ServiceCenters')
     except CarrierIntegrationError as exc: raise HTTPException(400,str(exc))
 
 @router.post('/dayton/service-eligibility')
-async def dayton_service_eligibility(payload:ServiceLane):
+async def dayton_service_eligibility(payload:ServiceLane,db:Session=Depends(get_db)):
     params={'origin':payload.origin_zip,'destination':payload.destination_zip}
     if payload.date: params['date']=payload.date
-    try: return await DaytonClient().request('GET','/api/Shipping/ServiceEligibility',params=params)
+    try: return await DaytonClient.from_db(db).request('GET','/api/Shipping/ServiceEligibility',params=params)
     except CarrierIntegrationError as exc: raise HTTPException(400,str(exc))
 
 @router.post('/dayton/rate-test')
 async def dayton_rate_test(payload:DaytonRateTest,db:Session=Depends(get_db)):
-    row=get_dayton_connection(db); cfg=row.settings or {}; client=DaytonClient(); account=client.account or cfg.get('account')
-    if not account: raise HTTPException(400,'Dayton account code is required. Add DAYTON_API_ACCOUNT to .env or set the account in Integration Hub.')
+    row=get_dayton_connection(db); cfg=row.settings or {}; client=DaytonClient.from_db(db); account=client.account or cfg.get('account')
+    if not account: raise HTTPException(400,'Dayton account code is required. Set the account in Integration Hub → Dayton Freight.')
     class U:
         def __init__(self,p):
             self.quantity=p.quantity;self.weight_lbs=p.weight_lbs;self.length_in=p.length_in;self.width_in=p.width_in;self.height_in=p.height_in;self.freight_class=p.freight_class
@@ -165,7 +222,7 @@ async def dayton_rate_test(payload:DaytonRateTest,db:Session=Depends(get_db)):
 @router.post('/dayton/tracking-test')
 async def dayton_tracking_test(payload:TrackingTest,db:Session=Depends(get_db)):
     try:
-        normalized,raw=await dayton_track(payload.number,payload.type); audit(db,'dayton_tracking_test',{'number_type':payload.type,'event_count':len(normalized)})
+        normalized,raw=await dayton_track(payload.number,payload.type,client=DaytonClient.from_db(db)); audit(db,'dayton_tracking_test',{'number_type':payload.type,'event_count':len(normalized)})
         return {'normalized':[x.__dict__ for x in normalized],'raw_response':raw}
     except CarrierIntegrationError as exc: raise HTTPException(400,str(exc))
 
@@ -174,7 +231,7 @@ async def dayton_pickup_test(db:Session=Depends(get_db)):
     # Dayton documents a TESTING reference that prevents a real pickup from being created.
     payload=build_test_pickup_payload()
     try:
-        response=await dayton_create_pickup(payload); audit(db,'dayton_pickup_test',{'pickup_number':response.get('pickupNumber') if isinstance(response,dict) else None})
+        response=await dayton_create_pickup(payload,client=DaytonClient.from_db(db)); audit(db,'dayton_pickup_test',{'pickup_number':response.get('pickupNumber') if isinstance(response,dict) else None})
         return {'request':payload,'response':response,'safe_test':True}
     except CarrierIntegrationError as exc: raise HTTPException(400,str(exc))
 
@@ -189,7 +246,7 @@ async def dayton_sync_shipment_tracking(shipment_id:int,db:Session=Depends(get_d
     number_type='Pro' if shipment.pro_number else 'BillOfLading'
     if not number: raise HTTPException(400,'A PRO or BOL number is required before Dayton tracking can be synchronized')
     try:
-        normalized,raw=await dayton_track(number,number_type)
+        normalized,raw=await dayton_track(number,number_type,client=DaytonClient.from_db(db))
     except CarrierIntegrationError as exc:
         raise HTTPException(400,str(exc))
     created=0
@@ -216,9 +273,12 @@ def openapi_analyze(payload:OpenApiImport):
 @router.post('/openapi/import')
 def openapi_import(payload:OpenApiImport,db:Session=Depends(get_db)):
     analysis=analyze_openapi(payload.specification); provider=payload.provider_name or analysis['title']
+    if 'dayton' in str(provider).lower():
+        provider='Dayton Freight'
+        analysis['detected_auth_type']='basic_auth'
     row=db.query(IntegrationConnection).filter(IntegrationConnection.provider==provider).first()
     caps=sorted({str(tag).lower().replace(' ','_') for tag in analysis['tags']})
-    settings={'openapi_title':analysis['title'],'openapi_version':analysis['version'],'endpoint_count':analysis['endpoint_count'],'tags':analysis['tags']}
+    settings={'openapi_title':analysis['title'],'openapi_version':analysis['version'],'endpoint_count':analysis['endpoint_count'],'tags':analysis['tags'],'detected_auth_type':analysis.get('detected_auth_type','none'),'auth_schemes':analysis.get('auth_schemes',[]),'base_url':(analysis.get('base_urls') or [None])[0]}
     if not row:
         row=IntegrationConnection(provider=provider,category=payload.category,status='imported',environment='sandbox',capabilities=caps,settings=settings);db.add(row)
     else:
