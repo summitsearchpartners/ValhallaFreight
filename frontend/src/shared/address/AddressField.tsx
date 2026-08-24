@@ -11,105 +11,102 @@ type Props={
   autoFocus?:boolean;
 };
 
+/**
+ * Valhalla Freight shared verified-address input.
+ *
+ * v0.7.8 intentionally uses Google's native Places Autocomplete widget instead
+ * of maintaining our own prediction dropdown. Google's widget attaches the
+ * suggestion container to document.body, which prevents quote-confirmation
+ * sidebars/modals from clipping or suppressing suggestions.
+ */
 export default function AddressField({value,onValueChange,onAddressSelected,placeholder='Start typing an address…',required,autoFocus}:Props){
-  const [suggestions,setSuggestions]=useState<any[]>([]);
-  const [open,setOpen]=useState(false);
+  const inputRef=useRef<HTMLInputElement>(null);
+  const autocompleteRef=useRef<any>(null);
+  const listenerRef=useRef<any>(null);
   const [ready,setReady]=useState(false);
-  const [placesLib,setPlacesLib]=useState<any>(null);
-  const sessionToken=useRef<any>(null);
-  const requestId=useRef(0);
-  const timer=useRef<number|undefined>(undefined);
-  const wrapper=useRef<HTMLDivElement>(null);
 
   useEffect(()=>{
     let active=true;
-    if(!googlePlacesConfigured()) return;
+    if(!googlePlacesConfigured()){
+      console.warn('Valhalla Freight Address Service: Google Places API key is not configured. Autocomplete is disabled.');
+      return;
+    }
+
     loadGoogleMaps().then(async()=>{
+      if(!active||!inputRef.current)return;
       const google=(window as any).google;
-      const lib=await google.maps.importLibrary('places');
-      if(!active)return;
-      setPlacesLib(lib);
-      sessionToken.current=new lib.AutocompleteSessionToken();
-      setReady(true);
-    }).catch(()=>setReady(false));
-    return()=>{active=false};
-  },[]);
 
-  useEffect(()=>{
-    const close=(event:MouseEvent)=>{
-      if(wrapper.current&&!wrapper.current.contains(event.target as Node))setOpen(false);
-    };
-    document.addEventListener('mousedown',close);
-    return()=>document.removeEventListener('mousedown',close);
-  },[]);
+      // Ensure the Places library is available before constructing the widget.
+      if(google?.maps?.importLibrary){
+        try{ await google.maps.importLibrary('places'); }
+        catch(err){ console.warn('Valhalla Freight Address Service: Places library import failed.',err); }
+      }
+      if(!active||!inputRef.current)return;
 
-  async function fetchSuggestions(input:string){
-    if(!ready||!placesLib||input.trim().length<3){setSuggestions([]);setOpen(false);return;}
-    const id=++requestId.current;
-    try{
-      if(!sessionToken.current)sessionToken.current=new placesLib.AutocompleteSessionToken();
-      const {suggestions:items}=await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions({
-        input,
-        sessionToken:sessionToken.current,
-        includedPrimaryTypes:['street_address'],
-        includedRegionCodes:['us'],
-        language:'en-US',
-        region:'us'
+      const Autocomplete=google?.maps?.places?.Autocomplete;
+      if(!Autocomplete){
+        console.warn('Valhalla Freight Address Service: Google Places Autocomplete is unavailable. Verify Maps JavaScript API and Places API are enabled for this key.');
+        return;
+      }
+
+      const autocomplete=new Autocomplete(inputRef.current,{
+        componentRestrictions:{country:'us'},
+        fields:['address_components','formatted_address','name'],
+        types:['address']
       });
-      if(id!==requestId.current)return;
-      const next=(items||[]).filter((x:any)=>x.placePrediction).slice(0,6);
-      setSuggestions(next);
-      setOpen(next.length>0);
-    }catch{
-      if(id===requestId.current){setSuggestions([]);setOpen(false);}
+      autocompleteRef.current=autocomplete;
+
+      listenerRef.current=autocomplete.addListener('place_changed',()=>{
+        const place=autocomplete.getPlace();
+        const components=place?.address_components||[];
+        if(!components.length)return;
+
+        const structured=extractStructuredAddress(components);
+        if(!structured.address1&&place?.formatted_address){
+          structured.address1=String(place.formatted_address).split(',')[0].trim();
+        }
+
+        // Commit the street value first, then the entire structured address.
+        // The structured callback runs last so City/State/ZIP cannot be erased
+        // by a stale parent state update.
+        onValueChange(structured.address1||place?.formatted_address||inputRef.current?.value||'');
+        onAddressSelected(structured);
+      });
+
+      setReady(true);
+    }).catch(err=>{
+      console.warn('Valhalla Freight Address Service: Google Maps failed to initialize.',err);
+    });
+
+    return()=>{
+      active=false;
+      try{ listenerRef.current?.remove?.(); }catch{/* no-op */}
+      listenerRef.current=null;
+      autocompleteRef.current=null;
+    };
+  },[onAddressSelected,onValueChange]);
+
+  // Keep the DOM input synchronized with React state without fighting Google's
+  // native autocomplete while the user is typing/selecting a suggestion.
+  useEffect(()=>{
+    if(inputRef.current&&inputRef.current.value!==value){
+      inputRef.current.value=value||'';
     }
-  }
+  },[value]);
 
-  function changed(next:string){
-    onValueChange(next);
-    window.clearTimeout(timer.current);
-    timer.current=window.setTimeout(()=>fetchSuggestions(next),220);
-  }
-
-  async function select(item:any){
-    const prediction=item.placePrediction;
-    if(!prediction)return;
-    const place=prediction.toPlace();
-    await place.fetchFields({fields:['addressComponents','formattedAddress']});
-    if(place.addressComponents){
-      const structured=extractStructuredAddress(place.addressComponents);
-      // Commit the visible street value first, then send the complete structured
-      // address to the parent. The structured callback must run last so the
-      // parent does not overwrite City/State/ZIP with a stale address object.
-      onValueChange(structured.address1||place.formattedAddress||value);
-      onAddressSelected(structured);
-    }
-    setSuggestions([]);setOpen(false);
-    sessionToken.current=placesLib?new placesLib.AutocompleteSessionToken():null;
-  }
-
-  return <div className="vfAddressField" ref={wrapper}>
+  return <div className="vfAddressField">
     <div className="vfAddressInputWrap">
       <MapPin size={14}/>
       <input
+        ref={inputRef}
         required={required}
         autoFocus={autoFocus}
         autoComplete="off"
-        value={value}
-        onChange={e=>changed(e.target.value)}
-        onFocus={()=>suggestions.length&&setOpen(true)}
+        defaultValue={value}
+        onChange={e=>onValueChange(e.target.value)}
         placeholder={placeholder}
+        data-google-places-ready={ready?'true':'false'}
       />
     </div>
-    {open&&<div className="vfAddressSuggestions" role="listbox">
-      {suggestions.map((item:any,index:number)=>{
-        const prediction=item.placePrediction;
-        const text=prediction?.text?.toString?.()||'';
-        return <button type="button" key={`${text}-${index}`} onMouseDown={e=>e.preventDefault()} onClick={()=>select(item)}>
-          <MapPin size={14}/><span>{text}</span>
-        </button>
-      })}
-      <div className="vfAddressGoogle">Powered by Google</div>
-    </div>}
   </div>
 }

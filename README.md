@@ -2,11 +2,11 @@
 
 **Built for the Long Haul. Driven by Honor.**
 
-Valhalla Freight is an Transportation Operating System foundation with LTL-first brokerage execution and multi-mode expansion architecture designed around the complete brokerage lifecycle:
+Valhalla Freight is a Transportation Operating System foundation with LTL-first brokerage execution and multi-mode expansion architecture designed around the complete brokerage lifecycle:
 
 **Quote → Sell → Book → Source → Dispatch → Track → Deliver → Audit → Invoice → Pay → Analyze → Optimize**
 
-This repository contains a Dockerized React/TypeScript frontend, Python FastAPI backend and PostgreSQL data layer. The v0.6 build expands the authenticated Valhalla Freight foundation into modular Customer 360, Carrier 360, Capacity, Visibility, Finance, Claims, Intelligence, Integration Hub and Customer Portal workspaces while preserving: carrier responses are normalized behind a rating layer, customer pricing is rule-driven, shipment data is structured for analytics, and integrations can be replaced without redesigning the operating application.
+This repository contains a Dockerized React/TypeScript frontend, Python FastAPI backend and PostgreSQL data layer. The v0.7 build expands the authenticated Valhalla Freight foundation into modular Customer 360, Carrier 360, Capacity, Visibility, Finance, Claims, Intelligence, Integration Hub and Customer Portal workspaces while preserving: carrier responses are normalized behind a rating layer, customer pricing is rule-driven, shipment data is structured for analytics, and integrations can be replaced without redesigning the operating application.
 
 ## What is already in this build
 
@@ -18,7 +18,7 @@ This repository contains a Dockerized React/TypeScript frontend, Python FastAPI 
 - Professional responsive operations UI
 - Customer master data
 
-- Carrier 360 with compliance, authority, terminals, contacts and performance
+- Carrier 360 with editable carrier master data, compliance, contacts, terminals, modes, service areas, strategic lanes, contracts, documents, pricing relationships, scorecards, claims and activity history
 - Capacity Center with digital freight matching/load-board adapter framework
 - Visibility Center with delivery-commitment monitoring
 - Finance Center with freight-audit variance queue and approve/dispute workflow
@@ -162,3 +162,53 @@ Quote-to-shipment workflow: Quote Bucket, quote detail/approval, rate selection 
 
 ## v0.5.3 — Workspace readability
 Quote Studio and Shipment Detail now use full-width operational workspaces with larger typography, controls, financial KPIs, lane data, tracking details, and carrier-rate cards for better use of desktop screens.
+
+
+## v0.7.0 — Carrier 360 & Carrier Network
+
+Carrier 360 is now a full operational carrier-management domain with editable carrier master records, SCAC/MC/DOT identity, qualification and compliance, contacts, service centers, supported modes, service areas, strategic lanes, target costs, contracts, document vault, pricing-rule relationships, shipment-derived performance scorecards, claims exposure, carrier spend, and activity history.
+
+The Carrier Network provides search/filtering, preferred-carrier strategy, compliance readiness, API/EDI status, on-time performance, claims, spend, and direct navigation into each Carrier 360 record.
+
+## v0.7.1 — Carrier Compliance Document Uploads
+Carrier 360 compliance requirements now support persistent PDF/DOC/DOCX/JPG/PNG uploads with View, Download, Replace, file validation, 15 MB default limits, and version-history metadata. Local Docker deployments use the persistent `valhalla_freight_documents` volume; this storage boundary is designed to migrate to S3/object storage for production.
+
+## v0.7.2 — LTL Quote Workflow, Accessorials & Shipping Documents
+- Quote Studio now rates ZIP-to-ZIP; full street addresses are confirmed only after quote approval.
+- Removed requested pickup date/time from the quote-rate form while retaining an optional customer-required delivery date.
+- Added professional Special Services / Accessorial selection grouped by Pickup Services, Delivery Services, and Shipment Characteristics.
+- Quote approval now confirms the actual ship-from and ship-to facilities using saved Customer 360 locations or smart address lookup.
+- Saved customer location defaults automatically populate appointment, liftgate, residential, and limited-access accessorials into the shipment.
+- Shipment creation blocks if the confirmed ZIP differs from the ZIP that was rated, forcing a re-rate to protect pricing accuracy.
+- Approved shipments automatically receive a Valhalla BOL number.
+- Shipment Control Tower now provides printable Bill of Lading and Shipping Label documents.
+
+
+## v0.7.3 — Professional Bill of Lading
+- Rebuilt the printable BOL using the uploaded Dayton Freight BOL as a structural benchmark while retaining Valhalla Freight branding.
+- Automatically populates shipper/consignee addresses, saved-location contact details, carrier/SCAC, BOL, PRO, shipment number, schedule commitments, accessorials, handling-unit details, class, NMFC, hazmat indicator, dimensions, weights, totals, signatures and carrier PRO area.
+- Saved Customer 360 location contact/instruction data now travels with the confirmed shipment address so documents can populate it automatically.
+- Print view is formatted for US Letter and supports Print / Save PDF.
+
+
+## v0.7.4 — Shipment BOL Details
+
+Shipment Control Tower now stores editable BOL reference and commodity information: PO number, customer reference, package count/type, commodity description, NMFC, hazmat emergency contact/phone, and declared value. These fields flow automatically into the professional Valhalla Freight BOL. New shipments created from an approved quote receive a Valhalla BOL number automatically.
+
+
+## v0.7.5 — Shipment Confirmation Address & Immutable Numeric BOL
+- Restores/broadens Google Places suggestions during quote-to-shipment confirmation, including rural/route/premise addresses.
+- Keeps structured City/State/ZIP autofill after selecting the confirmed shipping facility.
+- New Valhalla-created shipments receive a eight-digit numeric BOL (for example `10000042`) at creation.
+- BOL numbers are immutable after creation and have been removed from Edit Shipment.
+
+
+## v0.7.6 — Eight-Digit BOL Numbers
+- New Valhalla-created shipments receive an immutable eight-digit numeric BOL at creation (for example `10000042`).
+- Existing shipment BOL numbers are preserved and are not renumbered.
+
+## v0.7.8 — Quote Confirmation Address Autocomplete Fix
+
+- Hardened Google Places autocomplete in quote-to-shipment confirmation.
+- Added automatic compatibility fallback for Google Places prediction/detail APIs.
+- Restored City/State/ZIP/Country autofill after selecting an address.

@@ -12,6 +12,12 @@ class Address(BaseModel):
     state: str
     postal_code: str
     country: str = "US"
+    contact_name: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    instructions: str | None = None
+    dock_hours: str | None = None
+    location_id: int | None = None
 
 class HandlingUnit(BaseModel):
     quantity: int = Field(default=1, ge=1)

@@ -9,10 +9,26 @@ def update_shipment(db: Session, shipment: Shipment, payload: ShipmentUpdate) ->
     previous_actual_pickup = shipment.actual_pickup_at
     previous_delivered = shipment.delivered_at
 
-    if "bol_number" in fields:
-        shipment.bol_number = (payload.bol_number or "").strip() or None
     if "pro_number" in fields:
         shipment.pro_number = (payload.pro_number or "").strip() or None
+    if "po_number" in fields:
+        shipment.po_number = (payload.po_number or "").strip() or None
+    if "customer_reference" in fields:
+        shipment.customer_reference = (payload.customer_reference or "").strip() or None
+    if "package_count" in fields:
+        shipment.package_count = payload.package_count
+    if "package_type" in fields:
+        shipment.package_type = (payload.package_type or "").strip() or None
+    if "commodity_description" in fields:
+        shipment.commodity_description = (payload.commodity_description or "").strip() or None
+    if "nmfc_number" in fields:
+        shipment.nmfc_number = (payload.nmfc_number or "").strip() or None
+    if "hazmat_emergency_contact" in fields:
+        shipment.hazmat_emergency_contact = (payload.hazmat_emergency_contact or "").strip() or None
+    if "hazmat_emergency_phone" in fields:
+        shipment.hazmat_emergency_phone = (payload.hazmat_emergency_phone or "").strip() or None
+    if "declared_value" in fields:
+        shipment.declared_value = payload.declared_value
     if "scheduled_pickup_at" in fields:
         shipment.scheduled_pickup_at = payload.scheduled_pickup_at
         shipment.pickup_date = payload.scheduled_pickup_at.date() if payload.scheduled_pickup_at else None

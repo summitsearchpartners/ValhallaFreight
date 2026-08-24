@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     access_token_minutes: int = 720
     default_admin_email: str = "admin@valhallafreight.local"
     default_admin_password: str = "Valhalla123!"
+    document_storage_path: str = "/app/storage"
+    max_compliance_document_mb: int = 15
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()

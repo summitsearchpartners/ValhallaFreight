@@ -73,10 +73,18 @@ class ShipmentCreate(BaseModel):
     pickup_date: date | None = None
     scheduled_pickup_at: datetime | None = None
     requested_delivery_at: datetime | None = None
+    origin: Address | None = None
+    destination: Address | None = None
+    origin_location_id: int | None = None
+    destination_location_id: int | None = None
+    accessorials: list[str] | None = None
 
 class ShipmentOut(ORMModel):
     id: int; shipment_number: str; customer_id: int; carrier_id: int | None; quote_id: int | None
     status: str; pro_number: str | None; bol_number: str | None
+    po_number: str | None; customer_reference: str | None; package_count: int | None; package_type: str | None
+    commodity_description: str | None; nmfc_number: str | None; hazmat_emergency_contact: str | None
+    hazmat_emergency_phone: str | None; declared_value: Decimal | None
     origin: dict; destination: dict; handling_units: list; accessorials: list
     carrier_cost: Decimal; customer_charge: Decimal; final_carrier_cost: Decimal | None
     pickup_date: date | None; estimated_delivery: date | None
@@ -85,8 +93,17 @@ class ShipmentOut(ORMModel):
 
 
 class ShipmentUpdate(BaseModel):
-    bol_number: str | None = None
+    # BOL number is system-assigned when the shipment is created and is immutable.
     pro_number: str | None = None
+    po_number: str | None = None
+    customer_reference: str | None = None
+    package_count: int | None = None
+    package_type: str | None = None
+    commodity_description: str | None = None
+    nmfc_number: str | None = None
+    hazmat_emergency_contact: str | None = None
+    hazmat_emergency_phone: str | None = None
+    declared_value: Decimal | None = None
     scheduled_pickup_at: datetime | None = None
     requested_delivery_at: datetime | None = None
     actual_pickup_at: datetime | None = None

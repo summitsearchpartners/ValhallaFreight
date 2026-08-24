@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models import Quote, Shipment, TrackingEvent, Customer, Carrier
+from app.domains.customers.models import CustomerLocation
 from app.schemas.entities import ShipmentCreate, ShipmentOut, TrackingEventCreate, DirectShipmentCreate, QuoteRequest, ShipmentUpdate
 from app.domains.shipments.import_service import import_shipments
 from app.domains.shipments.service import update_shipment
@@ -20,7 +21,20 @@ def _quote_number():
     return f"VFQ-{datetime.utcnow():%y%m%d%H%M%S%f}"
 
 
-def _create_from_quote(db: Session, q: Quote, carrier_id: int, pickup_date=None, scheduled_pickup_at=None, requested_delivery_at=None):
+def _assign_bol_number(db: Session, shipment: Shipment) -> str:
+    """Assign a human-friendly numeric BOL exactly once.
+
+    New Valhalla-created shipments use an eight-digit number beginning at 10000001.
+    The value is derived from the internal shipment id and checked for collisions
+    with imported/external BOL values before assignment.
+    """
+    candidate = 10000000 + int(shipment.id)
+    while db.query(Shipment).filter(Shipment.bol_number == str(candidate), Shipment.id != shipment.id).first():
+        candidate += 1
+    return str(candidate)
+
+
+def _create_from_quote(db: Session, q: Quote, carrier_id: int, pickup_date=None, scheduled_pickup_at=None, requested_delivery_at=None, origin=None, destination=None, origin_location_id=None, destination_location_id=None, accessorials=None):
     matches = [o for o in (q.options or []) if int(o.get("carrier_id", 0)) == carrier_id]
     if not matches:
         raise HTTPException(status_code=400, detail="Carrier option not found on quote")
@@ -29,15 +43,40 @@ def _create_from_quote(db: Session, q: Quote, carrier_id: int, pickup_date=None,
     legacy_pickup = schedule_at.date() if schedule_at else pickup_date
     delivery_target = requested_delivery_at or q.requested_delivery_at
     carrier_eta = (legacy_pickup + timedelta(days=int(opt["transit_days"]))) if legacy_pickup else None
+    final_origin = origin.model_dump() if hasattr(origin, "model_dump") else (origin or q.origin)
+    final_destination = destination.model_dump() if hasattr(destination, "model_dump") else (destination or q.destination)
+    final_accessorials = list(accessorials if accessorials is not None else (q.accessorials or []))
+
+    # Saved customer locations are the source of truth for default accessorials once the
+    # actual shipping/receiving facility is confirmed after quote approval.
+    def apply_location_defaults(location_id, side):
+        if not location_id:
+            return
+        loc = db.get(CustomerLocation, location_id)
+        if not loc or loc.customer_id != q.customer_id:
+            return
+        mapping = {
+            "appointment_required": f"appointment_{side}",
+            "liftgate_default": f"liftgate_{side}",
+            "residential": f"residential_{side}",
+            "limited_access": f"limited_access_{side}",
+        }
+        for attr, code in mapping.items():
+            if getattr(loc, attr, False) and code not in final_accessorials:
+                final_accessorials.append(code)
+
+    apply_location_defaults(origin_location_id, "pickup")
+    apply_location_defaults(destination_location_id, "delivery")
+
     s = Shipment(
         shipment_number=_shipment_number(),
         customer_id=q.customer_id,
         carrier_id=carrier_id,
         quote_id=q.id,
-        origin=q.origin,
-        destination=q.destination,
+        origin=final_origin,
+        destination=final_destination,
         handling_units=q.handling_units,
-        accessorials=q.accessorials,
+        accessorials=final_accessorials,
         carrier_cost=Decimal(str(opt["carrier_cost"])),
         customer_charge=Decimal(str(opt["customer_price"])),
         pickup_date=legacy_pickup,
@@ -46,6 +85,9 @@ def _create_from_quote(db: Session, q: Quote, carrier_id: int, pickup_date=None,
         requested_delivery_at=delivery_target,
     )
     db.add(s)
+    db.flush()
+    if not s.bol_number:
+        s.bol_number = _assign_bol_number(db, s)
     q.status = "booked"
     db.commit()
     db.refresh(s)
@@ -62,7 +104,7 @@ def book(payload: ShipmentCreate, db: Session = Depends(get_db)):
     q = db.query(Quote).filter(Quote.quote_number == payload.quote_number).first()
     if not q:
         raise HTTPException(status_code=404, detail="Quote not found")
-    return _create_from_quote(db, q, payload.carrier_id, payload.pickup_date, payload.scheduled_pickup_at, payload.requested_delivery_at)
+    return _create_from_quote(db, q, payload.carrier_id, payload.pickup_date, payload.scheduled_pickup_at, payload.requested_delivery_at, payload.origin, payload.destination, payload.origin_location_id, payload.destination_location_id, payload.accessorials)
 
 
 @router.post("/direct", response_model=ShipmentOut)
@@ -127,6 +169,10 @@ def shipment_detail(shipment_id: int, db: Session = Depends(get_db)):
     events = db.query(TrackingEvent).filter(TrackingEvent.shipment_id == shipment_id).order_by(TrackingEvent.event_time.desc()).all()
     return {
         "id":s.id,"shipment_number":s.shipment_number,"status":s.status,"pro_number":s.pro_number,"bol_number":s.bol_number,
+        "po_number":s.po_number,"customer_reference":s.customer_reference,"package_count":s.package_count,"package_type":s.package_type,
+        "commodity_description":s.commodity_description,"nmfc_number":s.nmfc_number,
+        "hazmat_emergency_contact":s.hazmat_emergency_contact,"hazmat_emergency_phone":s.hazmat_emergency_phone,
+        "declared_value":s.declared_value,
         "customer_id":s.customer_id,"customer_name":customer.name if customer else None,
         "carrier_id":s.carrier_id,"carrier_name":carrier.name if carrier else None,"carrier_scac":carrier.scac if carrier else None,
         "origin":s.origin,"destination":s.destination,"handling_units":s.handling_units,"accessorials":s.accessorials,

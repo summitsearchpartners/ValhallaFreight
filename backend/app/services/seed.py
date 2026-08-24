@@ -70,11 +70,27 @@ def seed_customer_360(db: Session):
 # --- v0.6 platform expansion seed data ---
 def seed_platform_expansion(db: Session):
     from datetime import date, timedelta
-    from app.models import (CarrierProfile,CarrierContact,CarrierTerminal,CarrierCompliance,IntegrationConnection,CapacityLoad,CapacityOffer,CarrierBill,Claim,Shipment,Carrier)
+    from app.models import (CarrierProfile,CarrierContact,CarrierTerminal,CarrierCompliance,CarrierServiceCapability,CarrierServiceArea,CarrierLane,CarrierContract,CarrierDocument,CarrierActivity,IntegrationConnection,CapacityLoad,CapacityOffer,CarrierBill,Claim,Shipment,Carrier)
     carriers=db.query(Carrier).all()
     for i,c in enumerate(carriers):
-        if not db.query(CarrierProfile).filter(CarrierProfile.carrier_id==c.id).first():
-            db.add(CarrierProfile(carrier_id=c.id,mc_number=f"MC{120000+i}",dot_number=f"DOT{2500000+i}",authority_status='active',payment_terms='Net 30',cargo_limit=Decimal('100000'),auto_liability_limit=Decimal('1000000'),insurance_expires_at=date.today()+timedelta(days=180+i*15),preferred=(c.scac in {'EXLA','ODFL'})))
+        profile=db.query(CarrierProfile).filter(CarrierProfile.carrier_id==c.id).first()
+        if not profile:
+            profile=CarrierProfile(carrier_id=c.id,mc_number=f"MC{120000+i}",dot_number=f"DOT{2500000+i}",authority_status='active',payment_terms='Net 30',cargo_limit=Decimal('100000'),auto_liability_limit=Decimal('1000000'),insurance_expires_at=date.today()+timedelta(days=180+i*15),preferred=(c.scac in {'EXLA','ODFL'}))
+            db.add(profile)
+        # Enrich legacy carrier profiles without overwriting real user-entered values.
+        if not profile.legal_name: profile.legal_name=c.name
+        if not profile.website: profile.website=f"https://{c.scac.lower()}.example"
+        if not profile.main_phone: profile.main_phone='800-555-0100'
+        if not profile.dispatch_email: profile.dispatch_email=f"dispatch@{c.scac.lower()}.example"
+        if not profile.billing_email: profile.billing_email=f"billing@{c.scac.lower()}.example"
+        if not profile.address1: profile.address1='1000 Carrier Way'
+        if not profile.city: profile.city='Kansas City'
+        if not profile.state: profile.state='MO'
+        if not profile.postal_code: profile.postal_code='64120'
+        if not profile.country: profile.country='USA'
+        if not profile.onboarding_status: profile.onboarding_status='approved'
+        if not profile.safety_rating: profile.safety_rating='satisfactory'
+        if profile.preferred and profile.preferred_rank is None: profile.preferred_rank=1 if c.scac=='ODFL' else 2
         if db.query(CarrierContact).filter(CarrierContact.carrier_id==c.id).count()==0:
             db.add(CarrierContact(carrier_id=c.id,name=f"{c.name} Operations",role='Operations',email=f"ops@{c.scac.lower()}.example",phone='800-555-0100',primary=True))
         if db.query(CarrierTerminal).filter(CarrierTerminal.carrier_id==c.id).count()==0:
@@ -83,6 +99,23 @@ def seed_platform_expansion(db: Session):
         if db.query(CarrierCompliance).filter(CarrierCompliance.carrier_id==c.id).count()==0:
             for item in ['Operating Authority','Cargo Insurance','Auto Liability','W-9','Carrier Agreement']:
                 db.add(CarrierCompliance(carrier_id=c.id,item_type=item,status='valid',expires_at=(date.today()+timedelta(days=180)) if 'Insurance' in item or 'Liability' in item else None))
+        if db.query(CarrierServiceCapability).filter(CarrierServiceCapability.carrier_id==c.id).count()==0:
+            db.add(CarrierServiceCapability(carrier_id=c.id,mode='LTL',service_level='Standard LTL',equipment='Dry / Palletized',active=True))
+            db.add(CarrierServiceCapability(carrier_id=c.id,mode='Volume LTL',service_level='Volume / Spot',equipment='Dry',active=True))
+        if db.query(CarrierServiceArea).filter(CarrierServiceArea.carrier_id==c.id).count()==0:
+            for state in ['KS','MO','IL','TX','OK','NE']:
+                db.add(CarrierServiceArea(carrier_id=c.id,area_type='state',value=state,description='Core service territory',active=True))
+        if db.query(CarrierLane).filter(CarrierLane.carrier_id==c.id).count()==0:
+            lane_samples=[('Kansas City, MO','Chicago, IL',Decimal('735')+Decimal(i*20),2),('Kansas City, MO','Dallas, TX',Decimal('805')+Decimal(i*25),2),('Chicago, IL','Atlanta, GA',Decimal('910')+Decimal(i*30),3)]
+            for origin,dest,cost,days in lane_samples:
+                db.add(CarrierLane(carrier_id=c.id,origin_region=origin,destination_region=dest,mode='LTL',service_level='Standard LTL',target_cost=cost,avg_transit_days=days,active=True,notes='Strategic development lane'))
+        if db.query(CarrierContract).filter(CarrierContract.carrier_id==c.id).count()==0:
+            db.add(CarrierContract(carrier_id=c.id,name=f'{c.name} Transportation Agreement',contract_type='Transportation Agreement',reference_number=f'VF-{c.scac}-MASTER',effective_date=date.today()-timedelta(days=90),expiration_date=date.today()+timedelta(days=275),status='active',notes='Master carrier agreement on file.'))
+        if db.query(CarrierDocument).filter(CarrierDocument.carrier_id==c.id).count()==0:
+            db.add(CarrierDocument(carrier_id=c.id,document_type='W-9',name=f'{c.scac} W-9',status='current'))
+            db.add(CarrierDocument(carrier_id=c.id,document_type='Certificate of Insurance',name=f'{c.scac} COI',expires_at=date.today()+timedelta(days=180),status='current'))
+        if db.query(CarrierActivity).filter(CarrierActivity.carrier_id==c.id).count()==0:
+            db.add(CarrierActivity(carrier_id=c.id,activity_type='system',subject='Carrier 360 initialized',body='Compliance, service capabilities, strategic lanes, contract and document records initialized.',created_by='Valhalla Freight'))
     providers={
       'Carrier Connectivity':['CarrierDetails','Shipify','PC*Miler'],
       'Rate Intelligence':['Truckstop','DAT','FreightWaves SONAR','Cargo Chief','Triumph'],
