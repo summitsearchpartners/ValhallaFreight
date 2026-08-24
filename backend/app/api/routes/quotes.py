@@ -55,9 +55,9 @@ class QuoteSelect(BaseModel):
 
 
 @router.post("/rate", response_model=QuoteResponse)
-def rate(payload: QuoteRequest, db: Session = Depends(get_db)):
+async def rate(payload: QuoteRequest, db: Session = Depends(get_db)):
     try:
-        options = RatingEngine(db).get_rates(payload)
+        options = await RatingEngine(db).get_rates(payload)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     number = _quote_number()

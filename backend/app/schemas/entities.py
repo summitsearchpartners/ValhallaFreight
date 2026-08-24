@@ -55,6 +55,10 @@ class RateOption(BaseModel):
     customer_price: Decimal
     gross_profit: Decimal
     margin_pct: Decimal
+    source: str = "simulation"
+    provider_quote_id: str | None = None
+    movement_type: str | None = None
+    warnings: list[str] = []
 
 class QuoteResponse(BaseModel):
     quote_number: str

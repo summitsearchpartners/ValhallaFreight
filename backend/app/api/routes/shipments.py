@@ -108,7 +108,7 @@ def book(payload: ShipmentCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/direct", response_model=ShipmentOut)
-def direct_shipment(payload: DirectShipmentCreate, db: Session = Depends(get_db)):
+async def direct_shipment(payload: DirectShipmentCreate, db: Session = Depends(get_db)):
     request = QuoteRequest(
         customer_id=payload.customer_id,
         origin=payload.origin,
@@ -119,7 +119,7 @@ def direct_shipment(payload: DirectShipmentCreate, db: Session = Depends(get_db)
         requested_delivery_at=payload.requested_delivery_at,
     )
     try:
-        options = RatingEngine(db).get_rates(request)
+        options = await RatingEngine(db).get_rates(request)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     selected = next((o for o in options if o.carrier_id == payload.carrier_id), None)

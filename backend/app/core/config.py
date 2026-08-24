@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     default_admin_password: str = "Valhalla123!"
     document_storage_path: str = "/app/storage"
     max_compliance_document_mb: int = 15
+    dayton_api_base_url: str = "https://api.daytonfreight.com"
+    dayton_api_username: str = ""
+    dayton_api_password: str = ""
+    dayton_api_account: str = ""
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()

@@ -212,3 +212,19 @@ Shipment Control Tower now stores editable BOL reference and commodity informati
 - Hardened Google Places autocomplete in quote-to-shipment confirmation.
 - Added automatic compatibility fallback for Google Places prediction/detail APIs.
 - Restored City/State/ZIP/Country autofill after selecting an address.
+
+
+## v0.8.0 — Carrier Integration Framework & Dayton Freight
+- Introduces normalized carrier adapter registry and provider-specific isolation.
+- Adds Dayton Freight (DAFG) as the first direct carrier adapter.
+- Supports Dayton rating, pickups, tracking/history, BOL/eBOL, document imaging, service eligibility, accessorial/class/terminal metadata.
+- Quote Studio automatically switches Dayton from simulated to live API rating when valid Dayton credentials/account are configured.
+- Integration Hub adds a Dayton API workbench, safe TESTING pickup workflow, and OpenAPI JSON importer for accelerating future carrier onboarding.
+- Dayton secrets are backend-only environment variables and are never exposed to the browser.
+
+
+## v0.8.1 — Integration Hub Production UX
+- Fixed Open adapter / Manage modal visibility.
+- Fixed Import OpenAPI interaction and added import results.
+- Clarified configured vs live-ready Dayton status.
+- Kept Dayton Freight as the quick-access managed carrier adapter.

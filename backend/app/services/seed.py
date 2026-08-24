@@ -71,6 +71,10 @@ def seed_customer_360(db: Session):
 def seed_platform_expansion(db: Session):
     from datetime import date, timedelta
     from app.models import (CarrierProfile,CarrierContact,CarrierTerminal,CarrierCompliance,CarrierServiceCapability,CarrierServiceArea,CarrierLane,CarrierContract,CarrierDocument,CarrierActivity,IntegrationConnection,CapacityLoad,CapacityOffer,CarrierBill,Claim,Shipment,Carrier)
+    dayton=db.query(Carrier).filter(Carrier.scac=='DAFG').first()
+    if not dayton:
+        dayton=Carrier(scac='DAFG',name='Dayton Freight Lines',api_enabled=True,on_time_pct=Decimal('0'),claims_pct=Decimal('0'))
+        db.add(dayton); db.flush()
     carriers=db.query(Carrier).all()
     for i,c in enumerate(carriers):
         profile=db.query(CarrierProfile).filter(CarrierProfile.carrier_id==c.id).first()
@@ -79,9 +83,9 @@ def seed_platform_expansion(db: Session):
             db.add(profile)
         # Enrich legacy carrier profiles without overwriting real user-entered values.
         if not profile.legal_name: profile.legal_name=c.name
-        if not profile.website: profile.website=f"https://{c.scac.lower()}.example"
-        if not profile.main_phone: profile.main_phone='800-555-0100'
-        if not profile.dispatch_email: profile.dispatch_email=f"dispatch@{c.scac.lower()}.example"
+        if not profile.website: profile.website='https://www.daytonfreight.com' if c.scac=='DAFG' else f"https://{c.scac.lower()}.example"
+        if not profile.main_phone: profile.main_phone='800-860-5102' if c.scac=='DAFG' else '800-555-0100'
+        if not profile.dispatch_email: profile.dispatch_email='apihelp@daytonfreight.com' if c.scac=='DAFG' else f"dispatch@{c.scac.lower()}.example"
         if not profile.billing_email: profile.billing_email=f"billing@{c.scac.lower()}.example"
         if not profile.address1: profile.address1='1000 Carrier Way'
         if not profile.city: profile.city='Kansas City'
@@ -128,16 +132,20 @@ def seed_platform_expansion(db: Session):
       'Claims & Insurance':['MyEZClaim.com','freightclaims.com','Global Logistics Solutions'],
       'Email & CRM':['Salesforce','Front'],
     }
-    if db.query(IntegrationConnection).count()==0:
-        for category,names in providers.items():
-            for name in names:
-                caps=[]
-                if category=='Shipment Visibility': caps=['tracking','eta','exceptions']
-                elif category=='Loadboards': caps=['post_load','search_capacity']
-                elif category=='Carrier Onboarding': caps=['compliance','insurance','authority']
-                elif category=='Accounting': caps=['ar','ap','invoice_sync']
-                elif category=='Factoring & Payments': caps=['payments','settlements']
-                elif category=='Rate Intelligence': caps=['market_rates','benchmarking']
-                elif category=='Carrier Connectivity': caps=['rating','dispatch','tracking']
-                db.add(IntegrationConnection(provider=name,category=category,status='available',environment='sandbox',capabilities=caps))
+    for category,names in providers.items():
+        for name in names:
+            if db.query(IntegrationConnection).filter(IntegrationConnection.provider==name, IntegrationConnection.category==category).first():
+                continue
+            caps=[]
+            if category=='Shipment Visibility': caps=['tracking','eta','exceptions']
+            elif category=='Loadboards': caps=['post_load','search_capacity']
+            elif category=='Carrier Onboarding': caps=['compliance','insurance','authority']
+            elif category=='Accounting': caps=['ar','ap','invoice_sync']
+            elif category=='Factoring & Payments': caps=['payments','settlements']
+            elif category=='Rate Intelligence': caps=['market_rates','benchmarking']
+            elif category=='Carrier Connectivity': caps=['rating','dispatch','tracking']
+            db.add(IntegrationConnection(provider=name,category=category,status='available',environment='sandbox',capabilities=caps))
+    existing_dayton=db.query(IntegrationConnection).filter(IntegrationConnection.provider=='Dayton Freight').first()
+    if not existing_dayton:
+        db.add(IntegrationConnection(provider='Dayton Freight',category='Carrier Connectivity',status='available',environment='sandbox',capabilities=['rating','pickup','tracking','bol','documents','service'],settings={'scac':'DAFG','auth_type':'basic'}))
     db.commit()
