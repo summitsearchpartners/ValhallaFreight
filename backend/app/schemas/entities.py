@@ -82,6 +82,8 @@ class ShipmentCreate(BaseModel):
     origin_location_id: int | None = None
     destination_location_id: int | None = None
     accessorials: list[str] | None = None
+    po_number: str | None = None
+    customer_reference: str | None = None
 
 class ShipmentOut(ORMModel):
     id: int; shipment_number: str; customer_id: int; carrier_id: int | None; quote_id: int | None

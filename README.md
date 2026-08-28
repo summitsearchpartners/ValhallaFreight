@@ -293,3 +293,12 @@ Shipment Confirmation now preserves the ZIP returned by Google Places (or the se
 ## v0.8.9 — ZIP+4 & Verified City/State Validation
 
 Shipment approval now accepts valid US ZIP+4 addresses when their first five digits match the rated ZIP and validates that Google-populated City/State remain consistent with the verified address.
+
+
+## v0.9.1 — Shipment Confirmation References & BOL Contacts
+
+- Added PO number and customer reference directly to quote-to-shipment confirmation.
+- Added shipper and consignee contact name, phone, email, and pickup/delivery instructions to shipment confirmation.
+- Saved Customer 360 locations continue to prefill these fields automatically.
+- Shipper/consignee contact details and instructions now print directly on the Valhalla Freight BOL.
+- Removed quoted carrier cost from the customer/carrier-facing BOL; the totals row now shows total packages instead.

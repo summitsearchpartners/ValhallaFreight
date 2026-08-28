@@ -100,7 +100,7 @@ def _assign_bol_number(db: Session, shipment: Shipment) -> str:
     return str(candidate)
 
 
-def _create_from_quote(db: Session, q: Quote, carrier_id: int, pickup_date=None, scheduled_pickup_at=None, requested_delivery_at=None, origin=None, destination=None, origin_location_id=None, destination_location_id=None, accessorials=None):
+def _create_from_quote(db: Session, q: Quote, carrier_id: int, pickup_date=None, scheduled_pickup_at=None, requested_delivery_at=None, origin=None, destination=None, origin_location_id=None, destination_location_id=None, accessorials=None, po_number=None, customer_reference=None):
     matches = [o for o in (q.options or []) if int(o.get("carrier_id", 0)) == carrier_id]
     if not matches:
         raise HTTPException(status_code=400, detail="Carrier option not found on quote")
@@ -149,6 +149,8 @@ def _create_from_quote(db: Session, q: Quote, carrier_id: int, pickup_date=None,
         estimated_delivery=carrier_eta,
         scheduled_pickup_at=schedule_at,
         requested_delivery_at=delivery_target,
+        po_number=(str(po_number).strip() if po_number else None),
+        customer_reference=(str(customer_reference).strip() if customer_reference else None),
     )
     db.add(s)
     db.flush()
@@ -171,7 +173,7 @@ def book(payload: ShipmentCreate, db: Session = Depends(get_db)):
     if not q:
         raise HTTPException(status_code=404, detail="Quote not found")
     _validate_confirmed_lane(db, q, payload)
-    return _create_from_quote(db, q, payload.carrier_id, payload.pickup_date, payload.scheduled_pickup_at, payload.requested_delivery_at, payload.origin, payload.destination, payload.origin_location_id, payload.destination_location_id, payload.accessorials)
+    return _create_from_quote(db, q, payload.carrier_id, payload.pickup_date, payload.scheduled_pickup_at, payload.requested_delivery_at, payload.origin, payload.destination, payload.origin_location_id, payload.destination_location_id, payload.accessorials, payload.po_number, payload.customer_reference)
 
 
 @router.post("/direct", response_model=ShipmentOut)

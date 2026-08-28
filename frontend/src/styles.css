@@ -328,3 +328,14 @@
   .quoteApprovalCard .accessorialSelector.compact .accessorialGrid{grid-template-columns:1fr}
 }
 .shipmentSetupSubtitle{margin:4px 0 0;color:#71808d;font-size:12px;line-height:1.45;max-width:620px}
+
+/* v0.9.1 — shipment confirmation references + shipper/consignee contact capture */
+.shipmentConfirmationRefs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:0 0 16px;padding:14px;border:1px solid #e1e8eb;background:#f8fafb;border-radius:10px}
+.shipmentConfirmationRefs label,.addressContactDetails label{font-size:8px;font-weight:750;color:#617680}
+.shipmentConfirmationRefs input{width:100%;margin-top:6px}
+.addressContactDetails{margin-top:12px;padding-top:12px;border-top:1px solid #e5ebee}
+.addressContactGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.addressContactGrid label.wide{grid-column:1/-1}
+.addressContactGrid input,.addressContactGrid textarea{width:100%;margin-top:5px}
+.addressContactGrid textarea{resize:vertical;min-height:58px}
+@media(max-width:760px){.shipmentConfirmationRefs,.addressContactGrid{grid-template-columns:1fr}.addressContactGrid label.wide{grid-column:auto}}
