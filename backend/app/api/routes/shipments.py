@@ -13,6 +13,72 @@ from app.services.rating import RatingEngine
 router = APIRouter(prefix="/shipments", tags=["Shipments"])
 
 
+def _normalize_postal(value) -> str:
+    """Normalize postal codes for lane matching.
+
+    US ZIP+4 values (66061-3554 / 660613554) are intentionally reduced to the
+    five-digit rated ZIP because they are the same rating geography. Canadian
+    and other postal codes keep their complete normalized value.
+    """
+    raw = "".join(str(value or "").strip().upper().split())
+    digits = raw.replace("-", "")
+    if len(digits) in (5, 9) and digits.isdigit():
+        return digits[:5]
+    return raw
+
+
+def _normalize_locality(value) -> str:
+    return " ".join(str(value or "").strip().upper().split())
+
+
+def _validate_confirmed_lane(db: Session, q: Quote, payload: ShipmentCreate) -> None:
+    """Prevent a rated ZIP from being silently paired with a facility in another ZIP.
+
+    Saved customer locations are validated from the database. One-off addresses must
+    carry the original ZIP returned by Google Places in verified_postal_code. The UI
+    keeps the rated ZIP locked for display, so this second value is intentionally
+    preserved for approval-time validation.
+    """
+    rated_origin = _normalize_postal((q.origin or {}).get("postal_code"))
+    rated_destination = _normalize_postal((q.destination or {}).get("postal_code"))
+
+    def validate_side(label: str, address, location_id, rated_zip: str):
+        if not address:
+            raise HTTPException(status_code=400, detail=f"{label} address is required before shipment approval.")
+        actual_zip = ""
+        if location_id:
+            loc = db.get(CustomerLocation, location_id)
+            if not loc or loc.customer_id != q.customer_id:
+                raise HTTPException(status_code=400, detail=f"{label} saved customer location is invalid for this quote.")
+            actual_zip = _normalize_postal(loc.postal_code)
+        else:
+            verified_postal_raw = getattr(address, "verified_postal_code", None)
+            actual_zip = _normalize_postal(verified_postal_raw)
+            if not actual_zip:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"{label} must be selected from Google address suggestions so the facility ZIP can be verified against the rated lane.",
+                )
+            verified_city = getattr(address, "verified_city", None)
+            verified_state = getattr(address, "verified_state", None)
+            if verified_city and verified_state:
+                if (_normalize_locality(address.city) != _normalize_locality(verified_city) or
+                        _normalize_locality(address.state) != _normalize_locality(verified_state)):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"{label} city/state must remain {verified_city}, {verified_state} for the selected Google-verified address.",
+                    )
+        if actual_zip != rated_zip:
+            display_zip = getattr(address, "verified_postal_code", None) if not location_id else getattr(loc, "postal_code", actual_zip)
+            raise HTTPException(
+                status_code=400,
+                detail=f"{label} was verified as {address.city}, {address.state} {display_zip}, but this quote was rated for ZIP {rated_zip}. Select a facility in the rated ZIP or re-rate the quote.",
+            )
+
+    validate_side("Ship From", payload.origin, payload.origin_location_id, rated_origin)
+    validate_side("Ship To", payload.destination, payload.destination_location_id, rated_destination)
+
+
 def _shipment_number():
     return f"VFS-{datetime.utcnow():%y%m%d%H%M%S%f}"
 
@@ -104,6 +170,7 @@ def book(payload: ShipmentCreate, db: Session = Depends(get_db)):
     q = db.query(Quote).filter(Quote.quote_number == payload.quote_number).first()
     if not q:
         raise HTTPException(status_code=404, detail="Quote not found")
+    _validate_confirmed_lane(db, q, payload)
     return _create_from_quote(db, q, payload.carrier_id, payload.pickup_date, payload.scheduled_pickup_at, payload.requested_delivery_at, payload.origin, payload.destination, payload.origin_location_id, payload.destination_location_id, payload.accessorials)
 
 

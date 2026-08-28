@@ -242,3 +242,46 @@ Shipment Control Tower now stores editable BOL reference and commodity informati
 - Adapter state now refreshes immediately after save and clearly shows masked username/password-saved status.
 - Imported OpenAPI provider adapters can be permanently deleted through a typed danger-zone confirmation.
 - Built-in Dayton Freight adapter remains protected from accidental deletion.
+## v0.8.4 — Requested Pickup Date in Quote Studio
+
+- Replaced the Quote Studio **Required delivery date** field with **Requested pickup date**.
+- Quote rating requests now persist the value in `requested_pickup_at` instead of misusing `requested_delivery_at`.
+- Quote Detail / Shipment Confirmation displays the requested pickup date and carries it into the shipment as the initial scheduled pickup date.
+- Shipment actual pickup and delivery timestamps remain separate operational fields for KPI tracking.
+
+
+
+## v0.8.5 — Shipment Confirmation Address + Rated ZIP Location Filtering
+
+- Fixed Google Places structured City/State/ZIP population in shipment confirmation by committing the selected structured address atomically and stabilizing the shared autocomplete lifecycle.
+- Saved Ship From and Ship To customer locations are filtered to the exact Origin/Destination ZIP used for the rated quote.
+- Confirmation ZIP fields are locked to the rated lane; changing ZIP requires re-rating the quote.
+
+## v0.8.6 — Google Verified Address Autocomplete Repair
+
+- Restores Google-powered street-address suggestions in Quote Bucket shipment confirmation.
+- Uses Places API (New) AutocompleteSuggestion directly inside Valhalla Freight instead of relying on the browser-mounted PAC dropdown.
+- Selecting a suggestion fills Street, City, and State while preserving the ZIP that was locked by the rated lane.
+- Saved customer locations remain filtered to the rated origin/destination ZIP.
+- Adds an explicit diagnostic message if the Google Places service cannot initialize.
+
+
+
+## v0.8.7 — Quote Record Usability & Simplified Accessorials
+
+- Enlarges Shipment Confirmation and gives it the majority of the Quote Record workspace.
+- Keeps Rated Lane, quoted Special Services, and Carrier Options grouped in the left review column.
+- Removes the duplicate selected-carrier summary from Shipment Confirmation; the selected rate remains clearly highlighted in Carrier Options.
+- Displays Ship From and Ship To confirmation side-by-side on larger screens for faster review and address confirmation.
+- Simplifies accessorial selection by consolidating location-specific delivery types such as schools, military/correctional/nuclear sites, hotels/restaurants, farms, mines, mills, self-storage, carnivals/fairs, camps/marinas, utilities, and similar destinations into Limited Access Delivery.
+- Preserves backward compatibility by translating older detailed location accessorial codes to the consolidated Limited Access selection when historical quotes are opened.
+
+
+## v0.8.8 — Rated ZIP Facility Validation
+
+Shipment Confirmation now preserves the ZIP returned by Google Places (or the selected saved customer location) separately from the locked rated-lane ZIP. Approval is blocked if either confirmed facility is outside the ZIP that was originally rated. One-off addresses must be selected from Google suggestions so Valhalla can verify the facility ZIP. The same validation is enforced by the backend before a shipment/BOL can be created.
+
+
+## v0.8.9 — ZIP+4 & Verified City/State Validation
+
+Shipment approval now accepts valid US ZIP+4 addresses when their first five digits match the rated ZIP and validates that Google-populated City/State remain consistent with the verified address.

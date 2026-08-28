@@ -289,3 +289,41 @@
 /* v0.8.3 Credential save reliability + provider adapter deletion */
 .integrationCardActions{display:flex;align-items:center;gap:6px}.integrationCardActions>button{display:inline-flex;align-items:center;gap:5px}.dangerIconBtn{width:32px!important;height:32px!important;padding:0!important;justify-content:center!important;border:1px solid #f2c6bc!important;background:#fff7f5!important;color:#b94831!important;border-radius:8px!important}.dangerIconBtn:hover{background:#ffe9e4!important;border-color:#e9a898!important}.dangerIconBtn svg{width:14px!important;height:14px!important}.adapterDangerZone{margin-top:18px;padding:14px;border:1px solid #efb8ad;background:#fff8f6;border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:16px}.adapterDangerZone>div{display:flex;align-items:flex-start;gap:10px}.adapterDangerZone>div>svg{width:18px;color:#bd4a34;flex:none;margin-top:2px}.adapterDangerZone b{font-size:11px;color:#8f3928}.adapterDangerZone p{font-size:9px;line-height:1.5;color:#8b6a63;margin:3px 0 0}.dangerBackdrop{background:rgba(64,14,9,.72)}.deleteAdapterModal{width:min(620px,94vw);border-color:#e8afa3}.dangerHead{background:#fff8f6}.dangerHead span,.dangerHead h2{color:#a63d2a}.deleteWarning{display:flex;gap:13px;align-items:flex-start;padding:16px;border:1px solid #efb8ad;background:#fff4f1;border-radius:12px}.deleteWarning>svg{width:25px;height:25px;color:#bd4a34;flex:none}.deleteWarning b{font-size:13px;color:#8f3928}.deleteWarning p{font-size:10px;color:#755c56;line-height:1.6;margin:4px 0 0}.deleteConfirmLabel{display:block;margin-top:16px;font-size:10px;color:#536873;font-weight:700}.deleteConfirmLabel input{display:block;width:100%;margin-top:7px;border:1px solid #d9e3e7;border-radius:9px;padding:11px;font-size:12px}.deleteConfirmLabel input:focus{outline:none;border-color:#d45c3c;box-shadow:0 0 0 3px rgba(212,92,60,.10)}.deleteModalActions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}.btn.danger:disabled{opacity:.45;cursor:not-allowed}.credentialForm small b{color:#2f6f5a}.credentialForm input::placeholder{opacity:1;color:#82939b}
 @media(max-width:720px){.adapterDangerZone{align-items:stretch;flex-direction:column}.integrationCardActions{width:100%;justify-content:flex-end}}
+.vfAddressStatusError{margin-top:5px;font-size:8px;color:#b45309;font-weight:600}
+
+
+/* v0.8.7 Quote record usability */
+.quoteDetailGrid{grid-template-columns:minmax(520px,.86fr) minmax(680px,1.14fr);gap:20px;align-items:start}
+.quoteDetailLeft{min-width:0}
+.quoteDetailRight{min-width:0}
+.quoteApprovalCard{padding:22px 24px;position:sticky;top:84px}
+.quoteApprovalCard .sectiontitle{margin-bottom:18px}
+.quoteApprovalCard .sectiontitle h3{font-size:15px}
+.quoteApprovalCard .sectiontitle p{font-size:10px;line-height:1.5;max-width:680px}
+.quoteApprovalCard .approvalDelivery{padding:13px 15px;margin-bottom:16px}
+.quoteApprovalCard .approvalDelivery span{font-size:9px}
+.quoteApprovalCard .approvalDelivery b{font-size:12px}
+.quoteApprovalCard .approvalAddressStack{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}
+.quoteApprovalCard .quoteAddressGroup{min-width:0}
+.quoteApprovalCard .quoteAddressGroup>label,.quoteApprovalCard .quoteAddressGroup .fieldLabel{font-size:9px}
+.quoteApprovalCard input,.quoteApprovalCard select{min-height:42px;font-size:11px}
+.quoteApprovalCard .accessorialSelector.compact{margin-top:18px}
+.quoteApprovalCard .accessorialSelector.compact .accessorialGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.quoteApprovalCard .accessorialSelector.compact .accessorialOption span{font-size:9px}
+.quoteApprovalCard .btn.wide{min-height:44px;font-size:11px;margin-top:12px}
+.quoteDetailLeft .shipmentSection{margin-bottom:0}
+.quoteDetailLeft .ratedZipLane>div{padding:12px 14px}
+.quoteDetailLeft .ratedZipLane b{font-size:19px}
+.quoteDetailLeft .rate{grid-template-columns:1.15fr .82fr auto}
+.quoteDetailLeft .rateprice strong{font-size:16px}
+.quoteDetailLeft .quoteAccessorialChips{gap:5px}
+@media(max-width:1320px){
+  .quoteDetailGrid{grid-template-columns:1fr}
+  .quoteApprovalCard{position:static}
+  .quoteApprovalCard .approvalAddressStack{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  .quoteApprovalCard{padding:18px}
+  .quoteApprovalCard .approvalAddressStack{grid-template-columns:1fr}
+  .quoteApprovalCard .accessorialSelector.compact .accessorialGrid{grid-template-columns:1fr}
+}

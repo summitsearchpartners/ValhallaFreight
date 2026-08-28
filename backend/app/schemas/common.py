@@ -18,6 +18,13 @@ class Address(BaseModel):
     instructions: str | None = None
     dock_hours: str | None = None
     location_id: int | None = None
+    # Original ZIP returned by the verified address source (Google Places or saved location).
+    # Shipment approval compares this to the ZIP that was actually rated.
+    verified_postal_code: str | None = None
+    # City/state returned by the verified address source. These let booking verify
+    # that the user did not alter the locality after selecting a Google result.
+    verified_city: str | None = None
+    verified_state: str | None = None
 
 class HandlingUnit(BaseModel):
     quantity: int = Field(default=1, ge=1)
