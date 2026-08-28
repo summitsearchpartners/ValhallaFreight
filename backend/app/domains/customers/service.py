@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from app.models import Customer, Shipment
 from app.domains.customers.models import CustomerProfile, CustomerLocation, CustomerContact, CustomerActivity
-from app.domains.customers.schemas import CustomerCreate, CustomerUpdate, LocationCreate, ContactCreate, ActivityCreate
+from app.domains.customers.schemas import CustomerCreate, CustomerUpdate, LocationCreate, ContactCreate, ActivityCreate, MarginProtectionUpdate
 
 ACTIVE_SHIPMENT_STATUSES = ["booked", "pickup_requested", "dispatched", "in_transit", "out_for_delivery"]
 
@@ -121,3 +121,27 @@ def add_activity(db: Session, customer_id: int, payload: ActivityCreate, user_na
     _customer_or_404(db, customer_id)
     item = CustomerActivity(customer_id=customer_id, created_by=user_name, **payload.model_dump())
     db.add(item); db.commit(); db.refresh(item); return item
+
+
+def update_margin_protection(db: Session, customer_id: int, payload: MarginProtectionUpdate):
+    _customer_or_404(db, customer_id)
+    profile = db.query(CustomerProfile).filter(CustomerProfile.customer_id == customer_id).first()
+    if not profile:
+        profile = CustomerProfile(customer_id=customer_id)
+        db.add(profile)
+    profile.margin_protection_threshold = payload.threshold
+    profile.margin_protection_internal_notify = payload.internal_notify
+    profile.margin_protection_customer_notify = payload.customer_notify
+    db.add(CustomerActivity(
+        customer_id=customer_id, activity_type='margin_protection',
+        subject='Margin protection policy updated',
+        body=f'Carrier invoice variance threshold set to ${payload.threshold:.2f}. Internal notifications: {"on" if payload.internal_notify else "off"}; customer notifications: {"on" if payload.customer_notify else "off"}.',
+        created_by='Valhalla Freight'
+    ))
+    db.commit(); db.refresh(profile)
+    return {
+        'customer_id': customer_id,
+        'threshold': profile.margin_protection_threshold,
+        'internal_notify': profile.margin_protection_internal_notify,
+        'customer_notify': profile.margin_protection_customer_notify,
+    }

@@ -15,7 +15,7 @@ from app.domains.claims import routes as claims
 from app.domains.integrations import routes as integrations
 from app.domains.intelligence import routes as intelligence
 
-app = FastAPI(title=settings.app_name, version="0.9.1", description="Valhalla Freight Transportation Operating System")
+app = FastAPI(title=settings.app_name, version="0.9.2", description="Valhalla Freight Transportation Operating System")
 app.add_middleware(CORSMiddleware, allow_origins=[x.strip() for x in settings.cors_origins.split(',')], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 @app.on_event("startup")

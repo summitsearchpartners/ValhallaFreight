@@ -302,3 +302,12 @@ Shipment approval now accepts valid US ZIP+4 addresses when their first five dig
 - Saved Customer 360 locations continue to prefill these fields automatically.
 - Shipper/consignee contact details and instructions now print directly on the Valhalla Freight BOL.
 - Removed quoted carrier cost from the customer/carrier-facing BOL; the totals row now shows total packages instead.
+
+## v0.9.2 — Customer Margin Protection & Freight Audit Automation
+- Customer-specific carrier invoice variance threshold in Customer 360.
+- Customer portal margin-protection control foundation.
+- Carrier invoice ingestion/matching by shipment number, BOL, or PRO.
+- Finance Center exceptions use each customer's configured threshold.
+- Internal and customer-facing margin-protection notifications.
+- Valhalla Intelligence now reads actual freight-audit exceptions rather than a fixed global $75 rule.
+- Carrier adapter interface includes an optional invoice capability for future carrier billing APIs.

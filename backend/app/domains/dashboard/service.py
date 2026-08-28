@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta, time
 from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from app.models import Shipment, Quote, Customer, Carrier
+from app.models import Shipment, Quote, Customer, Carrier, CarrierBill
 
 ACTIVE_STATUSES = ["booked", "pickup_requested", "dispatched", "picked_up", "in_transit", "out_for_delivery"]
 TERMINAL_STATUSES = ["delivered", "cancelled"]
@@ -185,18 +185,23 @@ def recent_shipments(db: Session, limit: int = 8):
     } for s,c,carrier in rows]
 
 
-def intelligence(db: Session, exception_threshold: Decimal = Decimal("75"), limit: int = 20):
-    rows = db.query(Shipment, Customer, Carrier).join(Customer, Shipment.customer_id == Customer.id).outerjoin(Carrier, Shipment.carrier_id == Carrier.id).filter(Shipment.final_carrier_cost.is_not(None)).order_by(Shipment.created_at.desc()).all()
+def intelligence(db: Session, limit: int = 20):
+    bill_rows = (db.query(CarrierBill, Shipment, Customer, Carrier)
+        .join(Shipment, CarrierBill.shipment_id == Shipment.id)
+        .join(Customer, Shipment.customer_id == Customer.id)
+        .outerjoin(Carrier, Shipment.carrier_id == Carrier.id)
+        .filter(CarrierBill.status == "exception")
+        .order_by(CarrierBill.created_at.desc()).all())
     exceptions=[]
-    for s,c,carrier in rows:
-        expected=_money(s.carrier_cost); final=_money(s.final_carrier_cost); variance=final-expected
-        if variance <= exception_threshold: continue
+    for bill,s,c,carrier in bill_rows:
+        expected=_money(bill.quoted_cost); final=_money(bill.invoice_cost); variance=_money(bill.variance)
         expected_gp=_money(s.customer_charge)-expected
         final_gp=_money(s.customer_charge)-final
         exceptions.append({
             "shipment_id":s.id,"shipment_number":s.shipment_number,"customer_name":c.name,
             "carrier_name":carrier.name if carrier else None,
             "expected_carrier_cost":expected,"final_carrier_cost":final,"variance":variance,
+            "threshold":_money(bill.threshold_at_audit or 75),
             "expected_gp":expected_gp,"final_gp":final_gp,"gp_impact":expected_gp-final_gp,
         })
     exceptions=exceptions[:limit]

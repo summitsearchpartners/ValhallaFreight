@@ -7,7 +7,7 @@ export type CustomerProfile = {
   id:number; customer_id:number; legal_name?:string|null; website?:string|null; phone?:string|null;
   account_manager?:string|null; sales_owner?:string|null; payment_terms:string; tax_exempt:boolean; credit_hold:boolean;
   onboarding_status:string; preferred_contact_method:string; billing_address?:Record<string,string>|null;
-  operating_preferences?:Record<string,unknown>; created_at:string; updated_at:string;
+  operating_preferences?:Record<string,unknown>; margin_protection_threshold:number|string; margin_protection_internal_notify:boolean; margin_protection_customer_notify:boolean; created_at:string; updated_at:string;
 };
 export type CustomerLocation = {
   id:number; customer_id:number; name:string; location_type:string; address1:string; address2?:string|null; city:string; state:string;

@@ -56,6 +56,7 @@ class MarginException(BaseModel):
     expected_carrier_cost: Decimal
     final_carrier_cost: Decimal
     variance: Decimal
+    threshold: Decimal
     expected_gp: Decimal
     final_gp: Decimal
     gp_impact: Decimal

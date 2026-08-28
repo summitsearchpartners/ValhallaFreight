@@ -1,6 +1,7 @@
 from datetime import datetime
-from sqlalchemy import String, Integer, DateTime, ForeignKey, Text, Boolean, JSON
+from sqlalchemy import String, Integer, DateTime, ForeignKey, Text, Boolean, JSON, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from decimal import Decimal
 from app.db.base import Base
 
 
@@ -21,6 +22,9 @@ class CustomerProfile(Base):
     preferred_contact_method: Mapped[str] = mapped_column(String(30), default="email")
     billing_address: Mapped[dict | None] = mapped_column(JSON)
     operating_preferences: Mapped[dict] = mapped_column(JSON, default=dict)
+    margin_protection_threshold: Mapped[Decimal] = mapped_column(Numeric(12,2), default=Decimal("75.00"))
+    margin_protection_internal_notify: Mapped[bool] = mapped_column(Boolean, default=True)
+    margin_protection_customer_notify: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

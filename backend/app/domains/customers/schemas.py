@@ -18,6 +18,9 @@ class CustomerProfileInput(BaseModel):
     preferred_contact_method: str = "email"
     billing_address: dict | None = None
     operating_preferences: dict = Field(default_factory=dict)
+    margin_protection_threshold: Decimal = Decimal("75.00")
+    margin_protection_internal_notify: bool = True
+    margin_protection_customer_notify: bool = True
 
     @field_validator("phone")
     @classmethod
@@ -67,6 +70,19 @@ class CustomerProfileOut(CustomerProfileInput, ORMModel):
     customer_id: int
     created_at: datetime
     updated_at: datetime
+
+
+class MarginProtectionUpdate(BaseModel):
+    threshold: Decimal = Field(ge=0, le=1000000)
+    internal_notify: bool = True
+    customer_notify: bool = True
+
+
+class MarginProtectionOut(BaseModel):
+    customer_id: int
+    threshold: Decimal
+    internal_notify: bool
+    customer_notify: bool
 
 
 class LocationCreate(BaseModel):

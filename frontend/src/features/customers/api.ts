@@ -9,4 +9,5 @@ export const customerApi={
   addLocation:(id:number,payload:any)=>api<CustomerLocation>(`/customers/${id}/locations`,{method:'POST',body:JSON.stringify(payload)}),
   addContact:(id:number,payload:any)=>api<CustomerContact>(`/customers/${id}/contacts`,{method:'POST',body:JSON.stringify(payload)}),
   addActivity:(id:number,payload:any)=>api<CustomerActivity>(`/customers/${id}/activities`,{method:'POST',body:JSON.stringify(payload)}),
+  updateMarginProtection:(id:number,payload:any)=>api<any>(`/customers/${id}/margin-protection`,{method:'PATCH',body:JSON.stringify(payload)}),
 };

@@ -17,3 +17,7 @@ class CarrierAdapter(ABC):
 
     async def track(self, number: str, number_type: str='Pro'):
         raise NotImplementedError
+
+    async def get_invoices(self, *args, **kwargs):
+        """Optional carrier capability. Implementations normalize invoice records into Valhalla's finance ingestion pipeline."""
+        raise NotImplementedError

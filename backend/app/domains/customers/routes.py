@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.api.deps import get_current_user
 from app.domains.customers import service
-from app.domains.customers.schemas import CustomerCreate, CustomerUpdate, CustomerSummary, Customer360, LocationCreate, LocationOut, ContactCreate, ContactOut, ActivityCreate, ActivityOut
+from app.domains.customers.schemas import CustomerCreate, CustomerUpdate, CustomerSummary, Customer360, LocationCreate, LocationOut, ContactCreate, ContactOut, ActivityCreate, ActivityOut, MarginProtectionUpdate, MarginProtectionOut
 
 router = APIRouter(prefix="/customers", tags=["Customer 360"])
 
@@ -34,3 +34,8 @@ def add_contact(customer_id: int, payload: ContactCreate, db: Session = Depends(
 @router.post("/{customer_id}/activities", response_model=ActivityOut, status_code=201)
 def add_activity(customer_id: int, payload: ActivityCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     return service.add_activity(db, customer_id, payload, current_user.full_name)
+
+
+@router.patch('/{customer_id}/margin-protection', response_model=MarginProtectionOut)
+def update_margin_protection(customer_id: int, payload: MarginProtectionUpdate, db: Session = Depends(get_db)):
+    return service.update_margin_protection(db, customer_id, payload)

@@ -198,7 +198,25 @@ class CarrierBill(Base):
     variance: Mapped[Decimal] = mapped_column(Numeric(12,2), default=Decimal('0'))
     status: Mapped[str] = mapped_column(String(30), default='pending_review')
     charge_breakdown: Mapped[list] = mapped_column(JSON, default=list)
+    threshold_at_audit: Mapped[Decimal] = mapped_column(Numeric(12,2), default=Decimal('75.00'))
+    invoice_source: Mapped[str] = mapped_column(String(60), default='manual')
+    matched_by: Mapped[str | None] = mapped_column(String(40))
+    exception_reason: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+class MarginProtectionNotification(Base):
+    __tablename__ = 'margin_protection_notifications'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    customer_id: Mapped[int] = mapped_column(ForeignKey('customers.id'), index=True)
+    shipment_id: Mapped[int] = mapped_column(ForeignKey('shipments.id'), index=True)
+    carrier_bill_id: Mapped[int] = mapped_column(ForeignKey('carrier_bills.id'), index=True)
+    audience: Mapped[str] = mapped_column(String(30), index=True)
+    severity: Mapped[str] = mapped_column(String(30), default='warning')
+    title: Mapped[str] = mapped_column(String(220))
+    body: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(30), default='unread', index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime)
 
 class IntegrationConnection(Base):
     __tablename__ = 'integration_connections'
