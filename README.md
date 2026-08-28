@@ -282,6 +282,14 @@ Shipment Control Tower now stores editable BOL reference and commodity informati
 Shipment Confirmation now preserves the ZIP returned by Google Places (or the selected saved customer location) separately from the locked rated-lane ZIP. Approval is blocked if either confirmed facility is outside the ZIP that was originally rated. One-off addresses must be selected from Google suggestions so Valhalla can verify the facility ZIP. The same validation is enforced by the backend before a shipment/BOL can be created.
 
 
+
+## v0.9.0 — Automatic Shipment Setup Workflow
+
+- After **Approve, build BOL & create shipment**, Valhalla now routes directly to the new Shipment Control Tower record and automatically opens the shipment setup form.
+- Operations can immediately complete PRO, PO/customer references, package details, NMFC, commodity, hazmat contact, declared value, schedule, actuals, and status without manually clicking Edit Shipment.
+- The system-assigned BOL remains locked and is already present when the setup form opens.
+- Choosing **Finish later** closes the setup form and leaves the user on the newly created shipment; the normal Edit Shipment action remains available afterward.
+
 ## v0.8.9 — ZIP+4 & Verified City/State Validation
 
 Shipment approval now accepts valid US ZIP+4 addresses when their first five digits match the rated ZIP and validates that Google-populated City/State remain consistent with the verified address.

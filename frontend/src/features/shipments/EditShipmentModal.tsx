@@ -5,8 +5,8 @@ import type {ShipmentDetail} from './types';
 
 const dt=(value?:string|null)=>value?value.slice(0,16):'';
 
-type Props={shipment:ShipmentDetail;close:()=>void;saved:(shipment:ShipmentDetail)=>void};
-export default function EditShipmentModal({shipment,close,saved}:Props){
+type Props={shipment:ShipmentDetail;close:()=>void;saved:(shipment:ShipmentDetail)=>void;initialSetup?:boolean};
+export default function EditShipmentModal({shipment,close,saved,initialSetup=false}:Props){
  const [form,setForm]=useState({
   pro_number:shipment.pro_number||'',status:shipment.status,
   scheduled_pickup_at:dt(shipment.scheduled_pickup_at),requested_delivery_at:dt(shipment.requested_delivery_at),
@@ -37,7 +37,7 @@ export default function EditShipmentModal({shipment,close,saved}:Props){
   }catch(err:any){setError(err.message||'Unable to update shipment')}finally{setBusy(false)}
  }
  return <div className="modalShade"><form className="entityModal shipmentEditModal" onSubmit={submit}>
-  <div className="entityModalHead"><div className="entityModalIcon"><FileText/></div><div><span>SHIPMENT CONTROL TOWER</span><h2>Edit {shipment.shipment_number}</h2></div><button type="button" onClick={close}><X/></button></div>
+  <div className="entityModalHead"><div className="entityModalIcon"><FileText/></div><div><span>{initialSetup?'NEW SHIPMENT SETUP':'SHIPMENT CONTROL TOWER'}</span><h2>{initialSetup?'Complete shipment details':`Edit ${shipment.shipment_number}`}</h2>{initialSetup&&<p className="shipmentSetupSubtitle">Shipment {shipment.shipment_number} has been created. Complete the operational and BOL details before continuing.</p>}</div><button type="button" onClick={close}><X/></button></div>
 
   <div className="shipmentEditIntro"><PackageSearch/><div><b>Shipment references & commodity details</b><p>These fields are stored on the shipment and flow automatically into the Valhalla Freight Bill of Lading.</p></div></div>
   <div className="entityFormGrid">
@@ -63,6 +63,6 @@ export default function EditShipmentModal({shipment,close,saved}:Props){
    <label className="wide">Shipment status<select value={form.status} onChange={e=>set('status',e.target.value)}><option value="booked">Booked</option><option value="pickup_requested">Pickup Requested</option><option value="dispatched">Dispatched</option><option value="picked_up">Picked Up</option><option value="in_transit">In Transit</option><option value="out_for_delivery">Out for Delivery</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select></label>
   </div>
   {error&&<div className="formError">{error}</div>}
-  <div className="entityModalFoot"><button type="button" className="btn secondary" onClick={close}>Cancel</button><button className="btn primary" disabled={busy}>{busy?'Saving shipment...':'Save shipment changes'}</button></div>
+  <div className="entityModalFoot"><button type="button" className="btn secondary" onClick={close}>{initialSetup?'Finish later':'Cancel'}</button><button className="btn primary" disabled={busy}>{busy?'Saving shipment...':initialSetup?'Save shipment setup':'Save shipment changes'}</button></div>
  </form></div>
 }

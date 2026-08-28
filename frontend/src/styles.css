@@ -327,3 +327,4 @@
   .quoteApprovalCard .approvalAddressStack{grid-template-columns:1fr}
   .quoteApprovalCard .accessorialSelector.compact .accessorialGrid{grid-template-columns:1fr}
 }
+.shipmentSetupSubtitle{margin:4px 0 0;color:#71808d;font-size:12px;line-height:1.45;max-width:620px}
