@@ -17,7 +17,7 @@ const nav=[
   ['Network',[[Users,'Customers','/customers'],[Building2,'Carrier 360','/carriers'],[RadioTower,'Capacity Center','/capacity'],[SlidersHorizontal,'Pricing Engine','/pricing']]],
   ['Finance & Risk',[[WalletCards,'Finance Center','/finance'],[ShieldAlert,'Claims Center','/claims']]],
   ['Intelligence',[[BrainCircuit,'Valhalla Intelligence','/intelligence'],[BarChart3,'Analytics','/analytics'],[FileSearch,'Prospect Analysis','/prospects']]],
-  ['Administration',[[Building2,'Muse Portal','/muse'],[Users,'Users & Company Access','/admin/users'],[ShieldCheck,'Portal Access','/admin/portal-access'],[PlugZap,'Integration Hub','/integrations'],[Globe2,'Customer Portal','/portal-admin']]],
+  ['Administration',[[Building2,'Muse Portal','/muse'],[Users,'Warehouse Users','/warehouse/users'],[Users,'Users & Company Access','/admin/users'],[ShieldCheck,'Portal Access','/admin/portal-access'],[PlugZap,'Integration Hub','/integrations'],[Globe2,'Customer Portal','/portal-admin']]],
 ] as const;
 
 const searchItems=[
@@ -25,6 +25,7 @@ const searchItems=[
  {label:'Safe Load',detail:'Warehouse driver and VIN verification',path:'/safe-load',icon:ShieldCheck},
  {label:'Muse Portal',detail:'Muse manufacturer applications, rates and bookings',path:'/muse',icon:Building2},
  {label:'Portal Access',detail:'Verified super-user access to customer portals',path:'/admin/portal-access',icon:ShieldCheck},
+ {label:'Warehouse Users',detail:'Safe Load-only manufacturer employee accounts',path:'/warehouse/users',icon:Users},
  {label:'Users & Company Access',detail:'Roles, company assignments and user activity',path:'/admin/users',icon:Users},
   {label:'Command Center',detail:'Operations overview',path:'/',icon:LayoutDashboard},{label:'Quote Studio',detail:'Create and compare rates',path:'/quotes',icon:Calculator},{label:'Shipments',detail:'Shipment control tower',path:'/shipments',icon:PackageSearch},{label:'Visibility Center',detail:'Tracking and ETA exceptions',path:'/visibility',icon:MapPinned},{label:'Freight Planner',detail:'Inbound and outbound location calendar',path:'/planner',icon:CalendarDays},{label:'Automation Center',detail:'Six pillars of LTL automation',path:'/automation',icon:Workflow},{label:'Customers',detail:'Customer 360',path:'/customers',icon:Users},{label:'Carrier 360',detail:'Carrier compliance and performance',path:'/carriers',icon:Building2},{label:'Capacity Center',detail:'Load boards and digital freight matching',path:'/capacity',icon:RadioTower},{label:'Pricing Engine',detail:'Tariffs, contracts and margin rules',path:'/pricing',icon:CircleDollarSign},{label:'Finance Center',detail:'Freight audit, AR and AP',path:'/finance',icon:WalletCards},{label:'Claims Center',detail:'Cargo claims and insurance',path:'/claims',icon:ShieldAlert},{label:'Valhalla Intelligence',detail:'Operational intelligence and exceptions',path:'/intelligence',icon:BrainCircuit},{label:'Analytics',detail:'Network analytics',path:'/analytics',icon:BarChart3},{label:'Prospect Analysis',detail:'Analyze prospect freight history',path:'/prospects',icon:FileSearch},{label:'Integration Hub',detail:'Provider adapters and health',path:'/integrations',icon:PlugZap},{label:'Customer Portal',detail:'Branded self-service workspace',path:'/portal-admin',icon:Globe2},
 ];

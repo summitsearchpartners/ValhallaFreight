@@ -1,3 +1,7 @@
+# AWS mobile connection test — v0.19.18
+
+See AWS_MOBILE_CONNECTION.md and Start-SafeLoad-AWS.ps1.
+
 # Current release: v0.19.16
 
 See ../docs/V0.19.16_SAFE_LOAD_UPRIGHT_PHOTOS.md. Adds conservative automatic ID orientation and Rotate Left/Right in upload/camera previews and saved web viewers. Update backend/frontend/mobile; verify App v0.19.16. Existing encrypted evidence remains unchanged.

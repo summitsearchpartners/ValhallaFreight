@@ -13,8 +13,8 @@ from app.services.auth import hash_password
 from app.services.user_activity import add_activity
 
 router=APIRouter(tags=['Account Administration'])
-Role=Literal['admin','manufacturer_admin','manufacturer','broker_admin','broker','customer','muse_admin']
-ROLE_OPTIONS=[{'value':'admin','label':'Valhalla Freight Admin (Super User)'}, {'value':'manufacturer_admin','label':'Manufacturer Admin'}, {'value':'manufacturer','label':'Manufacturer'}, {'value':'broker_admin','label':'Broker Admin'}, {'value':'broker','label':'Broker'}, {'value':'customer','label':'Customer'}, {'value':'muse_admin','label':'Muse Freight Admin'}]
+Role=Literal['admin','manufacturer_admin','manufacturer','broker_admin','broker','customer','muse_admin','warehouse']
+ROLE_OPTIONS=[{'value':'admin','label':'Valhalla Freight Admin (Super User)'}, {'value':'manufacturer_admin','label':'Manufacturer Admin'}, {'value':'manufacturer','label':'Manufacturer'}, {'value':'broker_admin','label':'Broker Admin'}, {'value':'broker','label':'Broker'}, {'value':'customer','label':'Customer'}, {'value':'muse_admin','label':'Muse Freight Admin'}, {'value':'warehouse','label':'Warehouse (Safe Load Only)'}]
 
 def super_user(user=Depends(get_current_user)):
     if user.role != 'admin': raise HTTPException(403,'Only Valhalla Freight Admin can manage accounts')
@@ -102,7 +102,7 @@ def validate_company(db,payload):
     if payload.role in {'broker','broker_admin'}:
         from app.models import BrokerCustomerAssignment
         if db.get(BrokerCustomerAssignment,company.id):raise HTTPException(409,'Remove this company’s broker customer assignment before making it a broker workspace')
-    if payload.role in COMPANY_ROLES | {'muse_admin'} and company.manufacturer_id is not None:raise HTTPException(422,'Select a parent company workspace for this role')
+    if payload.role in COMPANY_ROLES | {'muse_admin','warehouse'} and company.manufacturer_id is not None:raise HTTPException(422,'Select a parent company workspace for this role')
     return payload.customer_id
 
 def commit(db):
@@ -253,3 +253,78 @@ def unassign_broker_customer(company_id:int,customer_id:int,db:Session=Depends(g
     db.delete(assignment)
     add_activity(db,user,'broker_customer_unassigned',details={'company_id':company_id,'customer_id':customer_id})
     db.commit();return {'ok':True}
+
+# Warehouse identities are separate from manufacturer portal accounts.
+# Manufacturer Admin can administer only warehouse users of their own company.
+class WarehouseAccountIn(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    email: EmailStr
+    full_name: str=Field(min_length=1,max_length=180)
+    password: str|None=Field(default=None,min_length=12,max_length=72)
+    active: bool=True
+    customer_id: int|None=None
+
+    @field_validator('password')
+    @classmethod
+    def valid_password_bytes(cls,value):
+        if value is not None and len(value.encode('utf-8'))>72:
+            raise ValueError('Password exceeds 72 UTF-8 bytes')
+        return value
+
+
+def warehouse_admin_company(db,user,requested=None):
+    if user.role=='manufacturer_admin':
+        if not user.customer_id or (requested is not None and requested!=user.customer_id):
+            raise HTTPException(403,'Only your own manufacturer warehouse users can be managed')
+        company_id=user.customer_id
+    elif user.role=='admin':
+        company_id=requested
+        if company_id is None:
+            raise HTTPException(422,'Select a manufacturer company')
+    else:
+        raise HTTPException(403,'Manufacturer Admin or Super Admin required')
+    company=db.get(Customer,company_id)
+    if not company or company.manufacturer_id is not None:
+        raise HTTPException(422,'Select a parent manufacturer company')
+    return company_id
+
+
+def warehouse_out(row):
+    return {'id':row.id,'email':row.email,'full_name':row.full_name,'role':row.role,
+            'customer_id':row.customer_id,'active':row.active}
+
+
+@router.get('/warehouse/users')
+def list_warehouse_users(customer_id:int|None=None,db:Session=Depends(get_db),user=Depends(get_current_user)):
+    company_id=warehouse_admin_company(db,user,customer_id)
+    return [warehouse_out(u) for u in db.query(User).filter_by(role='warehouse',customer_id=company_id).order_by(User.full_name).all()]
+
+
+@router.post('/warehouse/users',status_code=201)
+def create_warehouse_user(payload:WarehouseAccountIn,db:Session=Depends(get_db),user=Depends(get_current_user)):
+    company_id=warehouse_admin_company(db,user,payload.customer_id)
+    if not payload.password:raise HTTPException(422,'An initial password is required')
+    email=str(payload.email).strip().lower()
+    if db.query(User).filter_by(email=email).first():raise HTTPException(409,'Email is already registered')
+    row=User(email=email,full_name=payload.full_name.strip(),role='warehouse',customer_id=company_id,
+             active=payload.active,password_hash=hash_password(payload.password))
+    db.add(row)
+    add_activity(db,user,'warehouse_account_created',details={'target_user_id':None,'email':email,'company_id':company_id})
+    commit(db);db.refresh(row)
+    return warehouse_out(row)
+
+
+@router.put('/warehouse/users/{user_id}')
+def update_warehouse_user(user_id:int,payload:WarehouseAccountIn,db:Session=Depends(get_db),user=Depends(get_current_user)):
+    row=db.get(User,user_id)
+    if not row or row.role!='warehouse':raise HTTPException(404,'Warehouse account not found')
+    warehouse_admin_company(db,user,row.customer_id)
+    if payload.customer_id is not None and payload.customer_id!=row.customer_id:
+        raise HTTPException(403,'Warehouse manufacturer assignment cannot be changed here')
+    email=str(payload.email).strip().lower()
+    if db.query(User).filter(User.email==email,User.id!=row.id).first():raise HTTPException(409,'Email is already registered')
+    row.email=email;row.full_name=payload.full_name.strip();row.active=payload.active
+    if payload.password:row.password_hash=hash_password(payload.password)
+    add_activity(db,user,'warehouse_account_updated',details={'target_user_id':row.id,'company_id':row.customer_id,'active':row.active,'password_reset':bool(payload.password)})
+    commit(db);db.refresh(row)
+    return warehouse_out(row)

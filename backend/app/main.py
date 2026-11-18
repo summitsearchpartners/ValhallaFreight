@@ -22,7 +22,7 @@ from app.domains.integrations import routes as integrations
 from app.domains.intelligence import routes as intelligence
 from app.domains.portal import routes as portal
 
-app = FastAPI(title=settings.app_name, version="0.19.16", description="Valhalla Freight Transportation Operating System")
+app = FastAPI(title=settings.app_name, version="0.19.19", description="Valhalla Freight Transportation Operating System")
 from app.services.user_activity import ActivityMiddleware
 from app.services.commercial_privacy import CommercialPrivacyMiddleware
 app.add_middleware(ActivityMiddleware)

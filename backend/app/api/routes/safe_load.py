@@ -6,16 +6,42 @@ from fastapi.responses import Response,StreamingResponse
 from sqlalchemy.orm import Session,sessionmaker
 from pydantic import BaseModel,Field
 from app.api.deps import get_current_user,get_db
-from app.models import Shipment,SafeLoadCase,SafeLoadEvent,TrackingEvent,SafeLoadBrokerContact,SafeLoadPhotoAttempt,SafeLoadCustodySnapshot,SafeLoadPhotoExtraction,SafeLoadBackPhoto,SafeLoadReleaseReceipt
+from app.models import Customer,Shipment,SafeLoadCase,SafeLoadEvent,TrackingEvent,SafeLoadBrokerContact,SafeLoadPhotoAttempt,SafeLoadCustodySnapshot,SafeLoadPhotoExtraction,SafeLoadBackPhoto,SafeLoadReleaseReceipt
 from app.services import safe_load as service
 from app.core.config import settings
 from app.integrations.secrets import _fernet
 
 router=APIRouter(prefix='/safe-load',tags=['Safe Load'])
-ROLES={'admin','broker','broker_admin','manufacturer','manufacturer_admin'}
+ROLES={'admin','broker','broker_admin','manufacturer','manufacturer_admin','warehouse'}
 
-def access(user=Depends(get_current_user),db:Session=Depends(get_db)):
+def warehouse_company_ids(db, user):
+    if user.role != 'warehouse':
+        return None
+    if not user.customer_id:
+        raise HTTPException(403, 'Warehouse account has no manufacturer assignment')
+    company = db.get(Customer, user.customer_id)
+    if not company or company.manufacturer_id is not None:
+        raise HTTPException(403, 'Warehouse must be linked to a parent manufacturer')
+    return [company.id] + [child.id for child in db.query(Customer.id).filter(Customer.manufacturer_id == company.id).all()]
+
+def access(request:Request,user=Depends(get_current_user),db:Session=Depends(get_db)):
     if user.role not in ROLES:raise HTTPException(403,'Safe Load workspace account required')
+    if user.role == 'warehouse':
+        allowed = warehouse_company_ids(db, user)
+        sid = request.path_params.get('sid')
+        if sid is not None:
+            row = db.get(SafeLoadCase, int(sid))
+            if row is None or row.customer_id not in allowed:
+                raise HTTPException(404, 'Safe Load shipment not found')
+        # The warehouse can perform arrival verification, not dispatch setup,
+        # broker approvals, contact edits, evidence export or broker overrides.
+        suffix = request.url.path.removeprefix('/api/v1/safe-load')
+        blocked = ('/enable','/invite','/approve-assignment','/broker-contact',
+                   '/broker-release','/custody/export','/extraction')
+        if any(suffix.endswith(part) for part in blocked) or (
+            '/custody/' in suffix and '/dispatcher-photo' in suffix
+        ) or (suffix.endswith('/custody/export')):
+            raise HTTPException(403, 'Warehouse cannot administer or override Safe Load')
     from app.services.muse_partner import has_access
     if user.role=='broker_admin' and has_access(db,user):db.info['safe_load_partner_request']=True
     return user
@@ -45,7 +71,9 @@ def view(db,row):
 
 @router.get('')
 def queue(user=Depends(access),db:Session=Depends(get_db)):
-    return [view(db,row) for row in db.query(SafeLoadCase).order_by(SafeLoadCase.updated_at.desc()).limit(300)]
+    q=db.query(SafeLoadCase)
+    if user.role=='warehouse':q=q.filter(SafeLoadCase.customer_id.in_(warehouse_company_ids(db,user)))
+    return [view(db,row) for row in q.order_by(SafeLoadCase.updated_at.desc()).limit(300)]
 
 @router.get('/events')
 async def events(request:Request,user=Depends(access),db:Session=Depends(get_db)):
@@ -57,7 +85,9 @@ async def events(request:Request,user=Depends(access),db:Session=Depends(get_db)
             with factory() as current:
                 current.info['request']=request
                 current.info['safe_load_partner_request']=db.info.get('safe_load_partner_request',False)
-                rows=current.query(SafeLoadCase).order_by(SafeLoadCase.shipment_id).all()
+                q=current.query(SafeLoadCase)
+                if user.role=='warehouse':q=q.filter(SafeLoadCase.customer_id.in_(warehouse_company_ids(current,user)))
+                rows=q.order_by(SafeLoadCase.shipment_id).all()
                 data=json.dumps([(r.shipment_id,r.status,r.revision,str(r.updated_at),bool(r.verified_until and r.verified_until<datetime.utcnow()),r.approved_by,r.verified_by) for r in rows])
             if data!=last:
                 yield 'data: '+json.dumps({'changed':True})+'\n\n';last=data

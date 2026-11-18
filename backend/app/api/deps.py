@@ -26,6 +26,12 @@ def get_current_user(
     user = db.get(User, user_id)
     if not user or not user.active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User account is unavailable")
+    # Warehouse tokens cannot access TMS, portal, or administration APIs.
+    # Role is read from DB each request, so deactivation and role changes apply immediately.
+    if user.role == 'warehouse':
+        path = request.url.path
+        if path not in {'/api/v1/auth/me', '/api/v1/auth/logout'} and not path.startswith('/api/v1/safe-load'):
+            raise HTTPException(403, 'Warehouse accounts are restricted to the Safe Load mobile application')
     from app.services.muse_partner import has_access
     user.muse_partner_access=has_access(db,user)
     request.state.auth_user = SimpleNamespace(id=user.id, role=user.role, customer_id=user.customer_id, email=user.email, full_name=user.full_name)

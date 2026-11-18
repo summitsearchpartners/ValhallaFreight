@@ -6,6 +6,7 @@ export const roleLabels: Record<string,string> = {
   broker_admin: 'Broker Admin',
   broker: 'Broker',
   customer: 'Customer',
+  warehouse: 'Warehouse (Safe Load Only)',
 };
 
 export const isManufacturer = (role?: string) => role === 'manufacturer' || role === 'manufacturer_admin';
@@ -17,6 +18,8 @@ export const canManageCarriers = (role?: string) => role === 'admin' || role ===
 export const canAccessMuse = (role?:string, partnerAccess=false) => role==='admin'||(partnerAccess&&(role==='broker_admin'||role==='muse_admin'));
 
 export function canOpenWorkspacePage(path: string, role?: string, showPricing = false, partnerAccess = false) {
+  if (role==='warehouse')return false;
+  if (path==='/warehouse/users')return role==='admin'||role==='manufacturer_admin';
   if (path==='/truckload')return role==='admin'||isBroker(role);
   if (path==='/muse')return canAccessMuse(role,partnerAccess);
   if (path.startsWith('/admin/')) return role === 'admin';
