@@ -4,6 +4,7 @@ import {useState, type FormEvent} from 'react';
 import {Navigate, useLocation, useNavigate} from 'react-router-dom';
 import {ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, CircleCheck, Route, BarChart3, Truck} from 'lucide-react';
 import {useAuth} from '../context/AuthContext';
+import {api} from '../services/api';
 
 export default function Login(){
   const {user,login}=useAuth();
@@ -14,6 +15,8 @@ export default function Login(){
   const [showPassword,setShowPassword]=useState(false);
   const [error,setError]=useState('');
   const [submitting,setSubmitting]=useState(false);
+  const [recovery,setRecovery]=useState(false);
+  const [recoveryMessage,setRecoveryMessage]=useState('');
   const customerMode=location.pathname==='/customer-login';
   if(user) return <Navigate to={user.role==='customer'?'/portal':'/'} replace/>;
   async function submit(e:FormEvent){
@@ -21,6 +24,12 @@ export default function Login(){
     try{const loggedIn=await login(email,password);const next=(location.state as any)?.from;if(customerMode&&loggedIn.role!=='customer')throw new Error('This sign-in is for customer portal users.');navigate(loggedIn.role==='customer'?'/portal':(next||'/'),{replace:true});}
     catch(err:any){setError(err.message || 'Unable to sign in.');}
     finally{setSubmitting(false);}
+  }
+  async function requestRecovery(e:FormEvent){
+    e.preventDefault();setError('');setSubmitting(true);setRecoveryMessage('');
+    try {const result=await api<{message:string}>('/auth/forgot-password',{method:'POST',body:JSON.stringify({email})});setRecoveryMessage(result.message)}
+    catch(err:any){setError(err.message || 'Unable to process request. Try again later.')}
+    finally{setSubmitting(false)}
   }
   return <div className="loginPage">
     <section className="loginHero">
@@ -41,12 +50,14 @@ export default function Login(){
       </div>
     </section>
     <section className="loginFormSide">
-      <form className="loginCard" onSubmit={submit}>
-        <div className="loginCardTop"><div className="loginLock"><LockKeyhole/></div><div><h2>{customerMode?'Customer Portal Sign In':'Welcome back'}</h2><p>{customerMode?'Secure access to your Valhalla Freight customer workspace.':'Sign in to continue to your freight workspace.'}</p></div></div>
+      <form className="loginCard" onSubmit={recovery?requestRecovery:submit}>
+        <div className="loginCardTop"><div className="loginLock"><LockKeyhole/></div><div><h2>{recovery?'Reset your password':customerMode?'Customer Portal Sign In':'Welcome back'}</h2><p>{recovery?'Enter the email address on your account to request a reset link.':customerMode?'Secure access to your Valhalla Freight customer workspace.':'Sign in to continue to your freight workspace.'}</p></div></div>
         <label>Email address<div className="loginInput"><Mail/><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@company.com" autoComplete="email" required/></div></label>
-        <label>Password <button type="button" className="forgot" onClick={()=>alert('Password recovery will be connected in the next authentication phase.')}>Forgot password?</button><div className="loginInput"><LockKeyhole/><input type={showPassword?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Enter your password" autoComplete="current-password" required/><button type="button" className="showPass" onClick={()=>setShowPassword(x=>!x)} aria-label="Toggle password visibility">{showPassword?<EyeOff/>:<Eye/>}</button></div></label>
+        {!recovery&&<label>Password <button type="button" className="forgot" onClick={()=>{setRecovery(true);setError('');setRecoveryMessage('')}}>Forgot password?</button><div className="loginInput"><LockKeyhole/><input type={showPassword?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Enter your password" autoComplete="current-password" required/><button type="button" className="showPass" onClick={()=>setShowPassword(x=>!x)} aria-label="Toggle password visibility">{showPassword?<EyeOff/>:<Eye/>}</button></div></label>}
+        {recoveryMessage&&<div className="loginSuccess" role="status">{recoveryMessage}</div>}
         {error&&<div className="loginError">{error}</div>}
-        <button className="loginSubmit" disabled={submitting}>{submitting?'Signing in…':customerMode?'Sign in to Customer Portal':'Sign in to Valhalla Freight'}<ArrowRight/></button>
+        <button className="loginSubmit" disabled={submitting}>{submitting?'Please wait…':recovery?'Send reset link':customerMode?'Sign in to Customer Portal':'Sign in to Valhalla Freight'}<ArrowRight/></button>
+        {recovery&&<button type="button" className="resetBack" onClick={()=>{setRecovery(false);setRecoveryMessage('');setError('')}}>Back to sign in</button>}
         <div className="secureLine"><ShieldCheck/> Secure access to Valhalla Freight systems</div>
       </form>
       <MusePoweredBy/>

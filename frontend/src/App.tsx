@@ -17,6 +17,7 @@ import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Quotes from './pages/Quotes';
 import Login from './pages/Login';
+import ResetPassword from './pages/ResetPassword';
 import {Shipments,Prospects} from './pages/Tables';
 import PricingPage from './features/pricing/PricingPage';
 import AnalyticsPage from './features/analytics/AnalyticsPage';
@@ -49,7 +50,7 @@ function FinanceAccess(){const {user}=useAuth();return ['manufacturer','manufact
 function CompanyAdminOnly({children}:{children:ReactNode}){const {user}=useAuth();return canAdministerCompany(user?.role)?<>{children}</>:<Navigate to='/' replace/>}
 function CustomerProtected(){const {user,loading}=useAuth();const location=useLocation();if(loading)return <div className="authLoading"><img src="/valhalla-freight-logo.png"/><span>Loading customer workspace…</span></div>;if(!user)return <Navigate to="/customer-login" replace/>;if(user.role==='admin')return <PortalSupportGate/>;if(user.role!=='customer')return <Navigate to="/" replace/>;return <CustomerPortalApp/>}
 function MuseGate(){const {user,loading}=useAuth();if(loading)return <p>Loading Muse Portal…</p>;if(!user)return <Navigate to="/login" replace/>;return canAccessMuse(user.role,user.muse_partner_access)?<MusePortal/>:<Navigate to="/" replace/>}
-export default function App(){usePreferences();return <Routes><Route path="/safe-load/carrier" element={<CarrierSubmission/>}/><Route path="/login" element={<Login/>}/><Route path="/customer-login" element={<Login/>}/><Route path="/portal" element={<CustomerProtected/>}/><Route path="/muse" element={<MuseGate/>}/><Route path="/*" element={<Protected><Layout><Routes>
+export default function App(){usePreferences();return <Routes><Route path="/safe-load/carrier" element={<CarrierSubmission/>}/><Route path="/login" element={<Login/>}/><Route path="/reset-password" element={<ResetPassword/>}/><Route path="/customer-login" element={<Login/>}/><Route path="/portal" element={<CustomerProtected/>}/><Route path="/muse" element={<MuseGate/>}/><Route path="/*" element={<Protected><Layout><Routes>
 <Route path="/" element={<Dashboard/>}/><Route path="/muse-credit/:manufacturerId" element={<MuseCreditPage/>}/><Route path="/quotes" element={<Quotes/>}/><Route path="/quotes/bucket" element={<QuoteBucketPage/>}/><Route path="/quotes/:quoteRef" element={<QuoteDetailPage/>}/>
 <Route path="/truckload" element={<AdminOnly><TruckloadPage/></AdminOnly>}/><Route path="/safe-load" element={<SafeLoadPage/>}/><Route path="/shipments" element={<Shipments/>}/><Route path="/shipments/new" element={<CreateShipmentPage/>}/><Route path="/shipments/:shipmentId" element={<ShipmentDetailPage/>}/>
 <Route path="/customers" element={<CustomersPage/>}/><Route path="/customers/:customerId" element={<CustomerDetailPage/>}/>
