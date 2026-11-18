@@ -11,9 +11,11 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.db.tenant_scope import broker_workspace, tenant
 from app.core.config import settings
 from app.models import (
     Carrier,
@@ -24,6 +26,7 @@ from app.models import (
     CarrierContract,
     CarrierDocument,
     CarrierLane,
+    CarrierRateControl,
     CarrierProfile,
     CarrierServiceArea,
     CarrierServiceCapability,
@@ -157,6 +160,18 @@ class LanePayload(BaseModel):
     notes: str | None = None
 
 
+class RateControlPayload(BaseModel):
+    scope: str = "global"
+    origin_region: str | None = None
+    destination_region: str | None = None
+    hide_rates: bool = False
+    direct_only: bool = False
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
+    active: bool = True
+    reason: str | None = None
+
+
 class ContractPayload(BaseModel):
     name: str
     contract_type: str = "Transportation Agreement"
@@ -188,6 +203,13 @@ def _carrier(db: Session, carrier_id: int) -> Carrier:
     if not row:
         raise HTTPException(404, "Carrier not found")
     return row
+
+
+def _can_manage_carrier(db: Session, carrier: Carrier) -> bool:
+    request = db.info.get('request')
+    actor = getattr(request.state, 'auth_user', None) if request else None
+    return bool(actor and (actor.role == 'admin' or (
+        actor.role == 'broker_admin' and carrier.customer_id == actor.customer_id)))
 
 
 def _profile(db: Session, carrier_id: int) -> CarrierProfile:
@@ -240,9 +262,14 @@ def _performance(db: Session, carrier: Carrier) -> dict[str, Any]:
 
     return {
         "shipments": total,
+        "delivery_qualifying":len(delivery_commitments),
+        "delivery_on_time":on_time_delivery,
+        "pickup_qualifying":len(scheduled_pickups),
+        "benchmark_on_time_pct":float(carrier.on_time_pct) if carrier.on_time_pct is not None else None,
+        "benchmark_source":"Stored reference / sample benchmark; not actual shipment performance",
         "delivered_shipments": len(delivered),
-        "on_time_delivery_pct": round((on_time_delivery / len(delivery_commitments) * 100), 1) if delivery_commitments else float(carrier.on_time_pct or 0),
-        "on_time_pickup_pct": round((on_time_pickup / len(scheduled_pickups) * 100), 1) if scheduled_pickups else 0.0,
+        "on_time_delivery_pct": round((on_time_delivery / len(delivery_commitments) * 100), 1) if delivery_commitments else None,
+        "on_time_pickup_pct": round((on_time_pickup / len(scheduled_pickups) * 100), 1) if scheduled_pickups else None,
         "avg_transit_days": round(sum(transit_days) / len(transit_days), 1) if transit_days else 0.0,
         "carrier_spend": round(cost, 2),
         "customer_revenue": round(revenue, 2),
@@ -251,7 +278,7 @@ def _performance(db: Session, carrier: Carrier) -> dict[str, Any]:
         "avg_cost": round(cost / total, 2) if total else 0.0,
         "claims": claim_count,
         "claim_amount": float(claim_amount),
-        "claims_pct": round((claim_count / total * 100), 2) if total else float(carrier.claims_pct or 0),
+        "claims_pct": round((claim_count / total * 100), 2) if total else None,
     }
 
 
@@ -279,6 +306,9 @@ def _lane_rollup(shipments: list[Shipment]) -> list[dict[str, Any]]:
 @router.get("")
 def list_carrier_360(db: Session = Depends(get_db)):
     carriers = db.query(Carrier).order_by(Carrier.name).all()
+    from app.models import IntegrationConnection
+    from app.services.operations import connection_state
+    connections=sorted(db.query(IntegrationConnection).all(),key=lambda r:r.customer_id is not None)
     result = []
     for c in carriers:
         p = db.query(CarrierProfile).filter(CarrierProfile.carrier_id == c.id).first()
@@ -294,6 +324,7 @@ def list_carrier_360(db: Session = Depends(get_db)):
             "modes": modes or [c.mode],
             "active": c.active,
             "api_enabled": c.api_enabled,
+            "connection":next((connection_state(db,r) for r in connections if r.provider.lower()==c.name.lower() or (r.settings or {}).get("scac")==c.scac),None),
             "preferred": bool(p.preferred) if p else False,
             "preferred_rank": p.preferred_rank if p else None,
             "authority_status": p.authority_status if p else "pending",
@@ -310,9 +341,13 @@ def create_carrier(payload: CarrierCreate, db: Session = Depends(get_db)):
     scac = payload.scac.strip().upper()
     if db.query(Carrier).filter(func.upper(Carrier.scac) == scac).first():
         raise HTTPException(409, "A carrier with this SCAC already exists")
-    carrier = Carrier(name=payload.name.strip(), scac=scac, mode=payload.mode, active=payload.active, api_enabled=payload.api_enabled)
+    carrier = Carrier(customer_id=tenant(db), name=payload.name.strip(), scac=scac, mode=payload.mode, active=payload.active, api_enabled=payload.api_enabled)
     db.add(carrier)
-    db.flush()
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, "A carrier with this SCAC already exists")
     db.add(CarrierProfile(carrier_id=carrier.id, mc_number=payload.mc_number, dot_number=payload.dot_number, authority_status=payload.authority_status, preferred=payload.preferred, legal_name=payload.name.strip(), onboarding_status="review"))
     db.add(CarrierServiceCapability(carrier_id=carrier.id, mode=payload.mode, service_level="Standard", active=True))
     db.add(CarrierActivity(carrier_id=carrier.id, activity_type="system", subject="Carrier created", body="Carrier master record created in Valhalla Freight.", created_by="Valhalla Freight"))
@@ -324,21 +359,31 @@ def create_carrier(payload: CarrierCreate, db: Session = Depends(get_db)):
 @router.get("/{carrier_id}")
 def carrier_detail(carrier_id: int, db: Session = Depends(get_db)):
     c = _carrier(db, carrier_id)
-    p = _profile(db, carrier_id)
+    p = db.query(CarrierProfile).filter_by(carrier_id=carrier_id).first() or CarrierProfile(
+        carrier_id=carrier_id, authority_status='pending', onboarding_status='pending',
+        safety_rating='unknown', preferred=False, cargo_limit=0, auto_liability_limit=0,
+    )
     contacts = db.query(CarrierContact).filter(CarrierContact.carrier_id == carrier_id).order_by(CarrierContact.primary.desc(), CarrierContact.name).all()
     terminals = db.query(CarrierTerminal).filter(CarrierTerminal.carrier_id == carrier_id).order_by(CarrierTerminal.state, CarrierTerminal.city).all()
     compliance = db.query(CarrierCompliance).filter(CarrierCompliance.carrier_id == carrier_id).order_by(CarrierCompliance.item_type).all()
     capabilities = db.query(CarrierServiceCapability).filter(CarrierServiceCapability.carrier_id == carrier_id).order_by(CarrierServiceCapability.mode, CarrierServiceCapability.service_level).all()
     service_areas = db.query(CarrierServiceArea).filter(CarrierServiceArea.carrier_id == carrier_id).order_by(CarrierServiceArea.area_type, CarrierServiceArea.value).all()
     lanes = db.query(CarrierLane).filter(CarrierLane.carrier_id == carrier_id).order_by(CarrierLane.origin_region, CarrierLane.destination_region).all()
+    rate_controls = [] if broker_workspace(db) and c.customer_id is None else db.query(CarrierRateControl).filter(CarrierRateControl.carrier_id == carrier_id).order_by(CarrierRateControl.active.desc(), CarrierRateControl.id.desc()).all()
     contracts = db.query(CarrierContract).filter(CarrierContract.carrier_id == carrier_id).order_by(CarrierContract.status, CarrierContract.expiration_date.desc()).all()
     documents = db.query(CarrierDocument).filter(CarrierDocument.carrier_id == carrier_id).order_by(CarrierDocument.uploaded_at.desc()).all()
     activities = db.query(CarrierActivity).filter(CarrierActivity.carrier_id == carrier_id).order_by(CarrierActivity.created_at.desc()).limit(75).all()
     shipments = db.query(Shipment).filter(Shipment.carrier_id == carrier_id).order_by(Shipment.created_at.desc()).all()
     pricing_rules = db.query(PricingRule).filter(PricingRule.carrier_id == carrier_id).order_by(PricingRule.priority).all()
     perf = _performance(db, c)
-
+    from app.models import IntegrationConnection
+    from app.services.operations import connection_state
+    connections=sorted(db.query(IntegrationConnection).all(),key=lambda r:r.customer_id is not None)
+    connection=next((connection_state(db,r) for r in connections if r.provider.lower()==c.name.lower() or (r.settings or {}).get('scac')==c.scac),None)
     return {
+        'connection':connection,
+        'can_manage':_can_manage_carrier(db,c),
+        'shared_catalog':broker_workspace(db) and c.customer_id is None,
         "carrier": {"id": c.id, "scac": c.scac, "name": c.name, "mode": c.mode, "active": c.active, "api_enabled": c.api_enabled},
         "profile": {
             "mc_number": p.mc_number, "dot_number": p.dot_number, "authority_status": p.authority_status,
@@ -364,6 +409,7 @@ def carrier_detail(carrier_id: int, db: Session = Depends(get_db)):
         "capabilities": [{"id": x.id, "mode": x.mode, "service_level": x.service_level, "equipment": x.equipment, "active": x.active} for x in capabilities],
         "service_areas": [{"id": x.id, "area_type": x.area_type, "value": x.value, "description": x.description, "active": x.active} for x in service_areas],
         "lanes": [{"id": x.id, "origin_region": x.origin_region, "destination_region": x.destination_region, "mode": x.mode, "service_level": x.service_level, "target_cost": float(x.target_cost) if x.target_cost is not None else None, "avg_transit_days": x.avg_transit_days, "active": x.active, "notes": x.notes} for x in lanes],
+        "rate_controls": [{"id": x.id, "scope": x.scope, "origin_region": x.origin_region, "destination_region": x.destination_region, "hide_rates": x.hide_rates, "direct_only": x.direct_only, "starts_at": x.starts_at, "ends_at": x.ends_at, "active": x.active, "reason": x.reason} for x in rate_controls],
         "contracts": [{"id": x.id, "name": x.name, "contract_type": x.contract_type, "reference_number": x.reference_number, "effective_date": x.effective_date, "expiration_date": x.expiration_date, "status": x.status, "document_url": x.document_url, "notes": x.notes} for x in contracts],
         "documents": [{"id": x.id, "document_type": x.document_type, "name": x.name, "file_url": x.file_url, "expires_at": x.expires_at, "status": x.status, "uploaded_at": x.uploaded_at} for x in documents],
         "activities": [{"id": x.id, "activity_type": x.activity_type, "subject": x.subject, "body": x.body, "created_by": x.created_by, "created_at": x.created_at} for x in activities],
@@ -388,7 +434,11 @@ def update_carrier(carrier_id: int, payload: CarrierUpdate, db: Session = Depend
         else:
             setattr(p, key, value)
     db.add(CarrierActivity(carrier_id=carrier_id, activity_type="update", subject="Carrier profile updated", body="Carrier master/profile information was updated.", created_by="Valhalla Freight"))
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, "A carrier with this SCAC already exists")
     return {"ok": True}
 
 
@@ -608,6 +658,22 @@ def edit_lane(carrier_id: int, row_id: int, payload: LanePayload, db: Session = 
 @router.delete("/{carrier_id}/lanes/{row_id}")
 def delete_lane(carrier_id: int, row_id: int, db: Session = Depends(get_db)):
     return _delete_child(db, CarrierLane, carrier_id, row_id)
+
+
+@router.post("/{carrier_id}/rate-controls")
+def add_rate_control(carrier_id: int, payload: RateControlPayload, db: Session = Depends(get_db)):
+    _carrier(db, carrier_id)
+    row = CarrierRateControl(carrier_id=carrier_id, **payload.model_dump())
+    db.add(row); db.commit(); db.refresh(row)
+    return {"id": row.id}
+
+@router.patch("/{carrier_id}/rate-controls/{row_id}")
+def edit_rate_control(carrier_id: int, row_id: int, payload: RateControlPayload, db: Session = Depends(get_db)):
+    return _patch_child(db, CarrierRateControl, carrier_id, row_id, payload)
+
+@router.delete("/{carrier_id}/rate-controls/{row_id}")
+def delete_rate_control(carrier_id: int, row_id: int, db: Session = Depends(get_db)):
+    return _delete_child(db, CarrierRateControl, carrier_id, row_id)
 
 
 @router.post("/{carrier_id}/contracts")

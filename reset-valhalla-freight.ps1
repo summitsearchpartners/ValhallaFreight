@@ -1,3 +1,2 @@
-Write-Host "Resetting Valhalla Freight local database and containers..." -ForegroundColor Yellow
-docker compose down -v
-docker compose up --build
+Write-Host "Restarting Valhalla Freight while preserving database and documents..." -ForegroundColor Yellow
+docker compose up -d --build

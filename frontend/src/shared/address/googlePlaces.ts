@@ -14,6 +14,7 @@ export type StructuredAddress = {
   location_id?:number;
   // ZIP returned by Google/saved location before the rated-lane ZIP is enforced in the UI.
   // Used at shipment approval to verify the selected facility truly belongs to the rated ZIP.
+  manual_confirmation?:boolean;
   verified_postal_code?:string;
   verified_city?:string;
   verified_state?:string;

@@ -141,6 +141,6 @@ export default function AddressField({value,onValueChange,onAddressSelected,plac
       })}
       <div className="vfAddressGoogle">Powered by Google</div>
     </div>}
-    {loadError&&<div className="vfAddressStatusError">Google address suggestions unavailable. Verify the Places API configuration.</div>}
+    {loadError&&<div className="vfAddressStatusError">Address search is unavailable. Enter the full address manually; in booking, choose Enter manually and confirm the facility.</div>}
   </div>;
 }

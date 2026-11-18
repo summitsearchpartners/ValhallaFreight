@@ -1,3 +1,119 @@
+# Current release: v0.19.16
+
+See docs/V0.19.16_SAFE_LOAD_UPRIGHT_PHOTOS.md. Adds conservative automatic ID orientation and Rotate Left/Right in upload/camera previews and saved web viewers. Update backend/frontend/mobile; verify App v0.19.16. Existing encrypted evidence remains unchanged.
+
+# Previous release: v0.19.15
+
+See docs/V0.19.15_SAFE_LOAD_SAVED_PHOTOS.md. Saved onsite photos now load through the authenticated API as data URIs, with loading/error/retry states. Update backend and mobile together; verify App v0.19.15. Existing stored photos do not need retaking.
+
+# Previous release: v0.19.14
+
+See docs/V0.19.14_SAFE_LOAD_RETAINED_PHOTOS_VIN.md. Onsite photos remain after QA/release and reload from protected evidence on reopening. New local neural VIN reader; rebuild the backend and restart Metro. Verify App v0.19.14.
+
+# Previous release: v0.19.13
+
+See docs/V0.19.13_SAFE_LOAD_VIN.md. VIN capture now saves only the outlined area; server VIN reading uses localized text and rotation. Rebuild Docker and restart Metro, then verify App v0.19.13.
+
+# Previous release: v0.19.12
+
+See docs/V0.19.12_SAFE_LOAD_READER.md for changes and update/test instructions. Photo order: front ID, back ID, truck VIN. Rebuild Docker and restart Metro; verify App v0.19.12.
+
+# v0.19.11 Safe Load cropped ID photos
+
+See [current front/back photo, crop and update guide](docs/V0.19.11_SAFE_LOAD_ID_PHOTOS.md). Manual guided capture replaces unreliable automatic/live-scanner controls. Update backend and mobile, preserve .env/data volumes, restart Metro and verify App v0.19.11.
+
+# v0.19.10 Safe Load single-photo review
+
+See [current photo Accept/Retake, barcode scanner and update guide](docs/V0.19.10_SAFE_LOAD_REVIEW.md). The repeating shutter loop is removed. Update mobile dependencies, restart Metro and verify App v0.19.10. Keep .env and existing data volumes.
+
+# v0.19.9 Safe Load camera and mobile update
+
+See [current scanner, auto-capture and installation guide](docs/V0.19.9_SAFE_LOAD_CAMERA.md). Rebuild backend/desktop and restart Metro; verify App v0.19.9. Preserve .env, database and document volumes.
+
+# v0.19.8 Safe Load QA and barcode extraction
+
+See [current installation, barcode scan, progress and confirmation instructions](docs/V0.19.8_SAFE_LOAD_QA_BARCODE.md). Update both backend/desktop and mobile, preserve .env and data volumes, restart Metro and verify App v0.19.8.
+
+# v0.19.7 Safe Load camera upload fix
+
+Fixes Unsupported FormDataPart implementation on SDK58. See [update/restart and test instructions](docs/V0.19.7_SAFE_LOAD_UPLOAD_FIX.md). Update the mobile source, restart Metro with a cleared cache, scan the NEW QR code and verify App v0.19.7. Keep .env and existing Docker data volumes.
+
+# v0.19.6 Safe Load automatic photo QA
+
+See [current update and test instructions](docs/V0.19.6_SAFE_LOAD_AUTOMATIC_REVIEW.md). Save the shared callback in Broker Admin My Profile, then capture both onsite photos and submit in the v0.19.6 phone app. Broker evidence review and authorization stay in the desktop software. Update desktop and mobile together, retaining .env and Docker data volumes.
+
+# v0.19.0 Truckload Command + Safe Load
+
+See [installation, roles, release controls and test instructions](docs/V0.19.0_TRUCKLOAD_SAFE_LOAD.md) and the [native mobile project](safe-load-mobile/README.md).
+
+# v0.18.5 Freight film and booking workflow
+
+See [changes, address setup, Docker testing and pilot acceptance](docs/V0.18.5_BOOKING_PILOT.md).
+
+# v0.18.4 Manufacturer commercial privacy
+
+See [changes and Docker testing](docs/V0.18.4_MANUFACTURER_PRIVACY.md).
+
+# v0.18.3 Clickable Muse Freight branding
+
+All Powered by Muse Freight logos link to https://musefreight.com/ in a new tab. This applies to sign-in, the workspace sidebar, and the customer portal.
+
+# v0.18.2 Login video and manufacturer quoting
+
+See [changes and Docker testing](docs/V0.18.2_LOGIN_VIDEO_MANUFACTURER_QUOTES.md).
+
+# v0.18.1 Muse Broker Admin and Customer Portal permissions
+
+See [setup, company designation, and Docker testing](docs/V0.18.1_MUSE_BROKER_ACCESS.md).
+
+# v0.18.0 Muse manufacturer approval and booking
+
+See [setup, permissions, credit application, and Docker testing](docs/V0.18.0_MUSE_MANUFACTURER_APPROVAL.md).
+
+# v0.17.1 Muse Freight pricing before selection
+
+See [Muse pricing and local Docker testing](docs/V0.17.1_MUSE_RATE_SELECTION.md).
+
+# v0.17.0 Muse Freight preview
+
+See [Muse Freight setup, account verification, and Docker testing](docs/V0.17.0_MUSE_FREIGHT.md).
+
+# v0.16.0 Broker and Broker Admin accounts
+
+See [role permissions, upgrade instructions, and local checks](docs/V0.16.0_BROKER_ROLES.md).
+
+# v0.15.0 operational clarity and workflow improvements
+
+See [Dave’s review changes, new workflows and data-preserving upgrade](docs/V0.15.0_OPERATIONAL_REVIEW.md).
+
+# v0.14.1 manufacturer portal routing correction
+
+See [manufacturer workspace access and safe local upgrade](docs/V0.14.1_MANUFACTURER_PORTAL_FIX.md).
+
+# v0.14.0 manufacturer customers and verified admin portal access
+
+See [customer ownership, Portal Access, Google Authenticator and safe local upgrade](docs/V0.14.0_CUSTOMERS_AND_PORTAL_ACCESS.md).
+
+# v0.13.1 company branding and single-page saves
+
+See [logo layout, Command Center greeting, single Save buttons and local upgrade](docs/V0.13.1_BRANDING_AND_SINGLE_SAVE.md).
+
+# v0.13.0 profile, branding and display preferences
+
+See [My Profile, System Settings, dark mode and safe Docker upgrade](docs/V0.13.0_PROFILE_AND_DISPLAY.md).
+
+# v0.12.9 account directory and popups
+
+See [clickable summary cards, account popups and local testing](docs/V0.12.9_ACCOUNT_POPUPS.md).
+
+# v0.12.8 accounts, roles and activity
+
+See [role setup and safe Docker upgrade guide](docs/V0.12.8_ACCOUNTS_AND_ROLES.md). Start at **Administration → Users & Company Access** with your existing Valhalla Admin login.
+
+# v0.12.7 manufacturer account update
+
+See [manufacturer release and safe Docker upgrade guide](docs/V0.12.7_MANUFACTURER.md).
+
 # Valhalla Freight
 
 **Built for the Long Haul. Driven by Honor.**
@@ -74,11 +190,10 @@ Stop it with:
 docker compose down
 ```
 
-Reset the local database completely:
+Rebuild while preserving the existing database and documents:
 
 ```powershell
-docker compose down -v
-docker compose up --build
+docker compose up -d --build
 ```
 
 ## First Git repository push
@@ -303,6 +418,13 @@ Shipment approval now accepts valid US ZIP+4 addresses when their first five dig
 - Shipper/consignee contact details and instructions now print directly on the Valhalla Freight BOL.
 - Removed quoted carrier cost from the customer/carrier-facing BOL; the totals row now shows total packages instead.
 
+
+## v0.10.0 — Free-Entry Freight Class
+
+- Quote Studio freight class is now a free-entry field instead of a fixed dropdown.
+- Supports standard decimal LTL classes such as `77.5` and `92.5`, as well as any valid class value required by a carrier or customer workflow.
+- The shared freight-details component keeps the same behavior anywhere Valhalla uses it, including direct shipment entry.
+
 ## v0.9.2 — Customer Margin Protection & Freight Audit Automation
 - Customer-specific carrier invoice variance threshold in Customer 360.
 - Customer portal margin-protection control foundation.
@@ -311,3 +433,25 @@ Shipment approval now accepts valid US ZIP+4 addresses when their first five dig
 - Internal and customer-facing margin-protection notifications.
 - Valhalla Intelligence now reads actual freight-audit exceptions rather than a fixed global $75 rule.
 - Carrier adapter interface includes an optional invoice capability for future carrier billing APIs.
+
+
+## v0.10.1 — Booking Flow Cleanup & Smart Location Review
+
+- Quote approval now proceeds directly to Shipment Control Tower without reopening the redundant post-booking shipment setup modal.
+- Carrier booking/API submission still occurs immediately when the quote is accepted; returned PRO/provider references remain on the active shipment.
+- New one-off customer facilities are still saved automatically to Customer 360.
+- Appointment, liftgate, residential and limited-access defaults are inferred from selected accessorials and pickup/delivery instructions when possible.
+- Every newly saved facility creates an internal review notification so operations can confirm the location defaults.
+- Customer locations can now be edited directly from Customer 360, including facility-default tags.
+- The notification bell now combines finance exceptions with operational location-review notifications.
+
+
+## v0.12.0 Customer Portal test login
+
+Broker/admin login remains unchanged. A customer-scoped local development account is seeded for Acme Industrial:
+
+- Customer portal URL: `http://localhost:5173/customer-login`
+- Email: `customer@acme.local`
+- Password: `Valhalla123!`
+
+Customer accounts are role-scoped and can only access their assigned customer data through `/api/v1/portal/*`.

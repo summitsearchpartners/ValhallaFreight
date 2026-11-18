@@ -5,8 +5,8 @@ import type {ShipmentDetail} from './types';
 
 const dt=(value?:string|null)=>value?value.slice(0,16):'';
 
-type Props={shipment:ShipmentDetail;close:()=>void;saved:(shipment:ShipmentDetail)=>void;initialSetup?:boolean};
-export default function EditShipmentModal({shipment,close,saved,initialSetup=false}:Props){
+type Props={shipment:ShipmentDetail;close:()=>void;saved:(shipment:ShipmentDetail)=>void};
+export default function EditShipmentModal({shipment,close,saved}:Props){
  const [form,setForm]=useState({
   pro_number:shipment.pro_number||'',status:shipment.status,
   scheduled_pickup_at:dt(shipment.scheduled_pickup_at),requested_delivery_at:dt(shipment.requested_delivery_at),
@@ -37,7 +37,7 @@ export default function EditShipmentModal({shipment,close,saved,initialSetup=fal
   }catch(err:any){setError(err.message||'Unable to update shipment')}finally{setBusy(false)}
  }
  return <div className="modalShade"><form className="entityModal shipmentEditModal" onSubmit={submit}>
-  <div className="entityModalHead"><div className="entityModalIcon"><FileText/></div><div><span>{initialSetup?'NEW SHIPMENT SETUP':'SHIPMENT CONTROL TOWER'}</span><h2>{initialSetup?'Complete shipment details':`Edit ${shipment.shipment_number}`}</h2>{initialSetup&&<p className="shipmentSetupSubtitle">Shipment {shipment.shipment_number} has been created. Complete the operational and BOL details before continuing.</p>}</div><button type="button" onClick={close}><X/></button></div>
+  <div className="entityModalHead"><div className="entityModalIcon"><FileText/></div><div><span>SHIPMENT CONTROL TOWER</span><h2>{`Edit ${shipment.shipment_number}`}</h2></div><button type="button" onClick={close}><X/></button></div>
 
   <div className="shipmentEditIntro"><PackageSearch/><div><b>Shipment references & commodity details</b><p>These fields are stored on the shipment and flow automatically into the Valhalla Freight Bill of Lading.</p></div></div>
   <div className="entityFormGrid">
@@ -45,8 +45,8 @@ export default function EditShipmentModal({shipment,close,saved,initialSetup=fal
    <label>PRO number<input value={form.pro_number} onChange={e=>set('pro_number',e.target.value)} placeholder="Carrier PRO number"/></label>
    <label>PO number<input value={form.po_number} onChange={e=>set('po_number',e.target.value)} placeholder="Customer purchase order"/></label>
    <label>Customer reference<input value={form.customer_reference} onChange={e=>set('customer_reference',e.target.value)} placeholder="Customer reference / shipment reference"/></label>
-   <label>Package count<input min="0" step="1" type="number" value={form.package_count} onChange={e=>set('package_count',e.target.value)} placeholder="e.g. 24"/></label>
-   <label>Package type<select value={form.package_type} onChange={e=>set('package_type',e.target.value)}><option value="">Select package type</option><option>Pallets</option><option>Skids</option><option>Boxes</option><option>Crates</option><option>Drums</option><option>Bundles</option><option>Cartons</option><option>Pieces</option><option>Other</option></select></label>
+   <label>Package count<input min="0" step="1" type="number" readOnly={!!shipment.quote_id} title={shipment.quote_id?"Calculated from the quoted freight lines":undefined} value={form.package_count} onChange={e=>set('package_count',e.target.value)} placeholder="e.g. 24"/></label>
+   <label>Package type<select value={form.package_type} onChange={e=>set('package_type',e.target.value)}><option value="">Select package type</option><option>Pallets</option><option>Skids</option><option>Boxes</option><option>Crates</option><option>Drums</option><option>Bundles</option><option>Gaylord</option><option>Cartons</option><option>Pieces</option><option>Other</option></select></label>
    <label>NMFC number<input value={form.nmfc_number} onChange={e=>set('nmfc_number',e.target.value)} placeholder="NMFC item / sub number"/></label>
    <label>Declared value ($)<input min="0" step="0.01" type="number" value={form.declared_value} onChange={e=>set('declared_value',e.target.value)} placeholder="0.00"/></label>
    <label className="wide">Commodity description<textarea rows={3} value={form.commodity_description} onChange={e=>set('commodity_description',e.target.value)} placeholder="Describe the commodity exactly as it should appear on the BOL"/></label>
@@ -63,6 +63,6 @@ export default function EditShipmentModal({shipment,close,saved,initialSetup=fal
    <label className="wide">Shipment status<select value={form.status} onChange={e=>set('status',e.target.value)}><option value="booked">Booked</option><option value="pickup_requested">Pickup Requested</option><option value="dispatched">Dispatched</option><option value="picked_up">Picked Up</option><option value="in_transit">In Transit</option><option value="out_for_delivery">Out for Delivery</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select></label>
   </div>
   {error&&<div className="formError">{error}</div>}
-  <div className="entityModalFoot"><button type="button" className="btn secondary" onClick={close}>{initialSetup?'Finish later':'Cancel'}</button><button className="btn primary" disabled={busy}>{busy?'Saving shipment...':initialSetup?'Save shipment setup':'Save shipment changes'}</button></div>
+  <div className="entityModalFoot"><button type="button" className="btn secondary" onClick={close}>Cancel</button><button className="btn primary" disabled={busy}>{busy?'Saving shipment...':'Save shipment changes'}</button></div>
  </form></div>
 }

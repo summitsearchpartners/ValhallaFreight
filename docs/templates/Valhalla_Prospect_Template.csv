@@ -1,0 +1,3 @@
+spend,weight,origin_zip,destination_zip,freight_class,carrier
+425.50,500,66061,45414,70,Example Carrier
+610.00,1200,66101,75201,85,Example Carrier

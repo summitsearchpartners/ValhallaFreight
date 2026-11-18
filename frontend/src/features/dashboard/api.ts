@@ -1,4 +1,4 @@
-import {api,API,getAccessToken} from '../../services/api';
+import {api} from '../../services/api';
 import type {DashboardSummary,PerformanceResponse,RecentShipment,IntelligenceSummary} from './types';
 export const dashboardApi={
   summary:()=>api<DashboardSummary>('/dashboard/summary'),
@@ -7,9 +7,7 @@ export const dashboardApi={
   intelligence:()=>api<IntelligenceSummary>('/dashboard/intelligence'),
   importFreight:async(file:File)=>{
     const fd=new FormData();fd.append('file',file);
-    const r=await fetch(`${API}/shipments/import`,{method:'POST',body:fd,headers:{Authorization:`Bearer ${getAccessToken()||''}`}});
-    const payload=await r.json().catch(()=>null);
-    if(!r.ok)throw new Error(payload?.detail||'Freight import failed');
+    const payload=await api<any>('/shipments/import',{method:'POST',body:fd});
     return payload as {imported:number;skipped:number;errors:string[]};
   }
 };

@@ -2,6 +2,7 @@ from datetime import datetime, date
 from decimal import Decimal
 from pydantic import BaseModel, model_validator
 from app.schemas.common import ORMModel, Address, HandlingUnit
+from app.schemas.muse import MusePreview
 
 class CustomerCreate(BaseModel):
     code: str
@@ -35,9 +36,15 @@ class QuoteRequest(BaseModel):
     accessorials: list[str] = []
     requested_pickup_at: datetime | None = None
     requested_delivery_at: datetime | None = None
+    quote_pricing_mode: str | None = None
+    quote_pricing_value: Decimal | None = None
+    payment_terms: str = "Prepaid"
 
     @model_validator(mode="after")
     def validate_schedule(self):
+        allowed={"Collect","Prepaid","Third Party","Third Party Prepaid","Third Party Collect"}
+        if self.payment_terms not in allowed:
+            raise ValueError("Unsupported freight payment terms")
         if self.requested_pickup_at and self.requested_delivery_at and self.requested_delivery_at < self.requested_pickup_at:
             raise ValueError("Required delivery date/time must be after the requested pickup date/time")
         return self
@@ -56,6 +63,7 @@ class RateOption(BaseModel):
     gross_profit: Decimal
     margin_pct: Decimal
     source: str = "simulation"
+    provider: str | None = None
     provider_quote_id: str | None = None
     movement_type: str | None = None
     warnings: list[str] = []
@@ -64,6 +72,7 @@ class QuoteResponse(BaseModel):
     quote_number: str
     options: list[RateOption]
     expires_at: datetime
+    muse_preview: MusePreview | None = None
 
 
 class DirectShipmentCreate(QuoteRequest):
@@ -71,6 +80,7 @@ class DirectShipmentCreate(QuoteRequest):
     pickup_date: date | None = None
 
 class ShipmentCreate(BaseModel):
+    muse_revision: str | None = None
     quote_number: str
     carrier_id: int
     option_index: int = 0
@@ -84,13 +94,21 @@ class ShipmentCreate(BaseModel):
     accessorials: list[str] | None = None
     po_number: str | None = None
     customer_reference: str | None = None
+    package_count: int | None = None
+    package_type: str | None = None
+    commodity_description: str | None = None
+    nmfc_number: str | None = None
+    hazmat_emergency_contact: str | None = None
+    hazmat_emergency_phone: str | None = None
+    declared_value: Decimal | None = None
 
 class ShipmentOut(ORMModel):
     id: int; shipment_number: str; customer_id: int; carrier_id: int | None; quote_id: int | None
+    customer_name: str | None = None; carrier_name: str | None = None; carrier_scac: str | None = None
     status: str; pro_number: str | None; bol_number: str | None
     po_number: str | None; customer_reference: str | None; package_count: int | None; package_type: str | None
     commodity_description: str | None; nmfc_number: str | None; hazmat_emergency_contact: str | None
-    hazmat_emergency_phone: str | None; declared_value: Decimal | None
+    hazmat_emergency_phone: str | None; declared_value: Decimal | None; payment_terms: str
     origin: dict; destination: dict; handling_units: list; accessorials: list
     carrier_cost: Decimal; customer_charge: Decimal; final_carrier_cost: Decimal | None
     pickup_date: date | None; estimated_delivery: date | None

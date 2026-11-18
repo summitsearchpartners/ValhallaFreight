@@ -16,7 +16,11 @@ def update_shipment(db: Session, shipment: Shipment, payload: ShipmentUpdate) ->
     if "customer_reference" in fields:
         shipment.customer_reference = (payload.customer_reference or "").strip() or None
     if "package_count" in fields:
-        shipment.package_count = payload.package_count
+        if shipment.quote_id:
+            from app.services.freight_totals import confirmed_package_count
+            shipment.package_count = confirmed_package_count(shipment.handling_units, payload.package_count)
+        else:
+            shipment.package_count = payload.package_count
     if "package_type" in fields:
         shipment.package_type = (payload.package_type or "").strip() or None
     if "commodity_description" in fields:

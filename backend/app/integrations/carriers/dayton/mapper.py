@@ -42,8 +42,28 @@ def build_rate_payload(request, account: str, direct_only: bool=False, terms: st
         'terms':terms,
     }
 
+def _movement_type(payload: dict) -> str:
+    """Normalize the carrier's lane result to Direct / Indirect / Unknown.
+
+    Dayton's Rates response exposes movementType. Partner terminal fields are retained as a
+    defensive signal for interline/partner service when movementType is absent. The carrier
+    response remains the source of truth; Valhalla does not infer geography on its own.
+    """
+    raw=str(payload.get('movementType') or '').strip()
+    if raw:
+        key=raw.lower()
+        if key == 'direct': return 'Direct'
+        if key in {'indirect','interline','partner','partnered'} or 'interline' in key or 'partner' in key:
+            return 'Indirect'
+        return raw
+    service=payload.get('serviceEligibility') or {}
+    if service.get('originPartner') or service.get('destinationPartner'):
+        return 'Indirect'
+    return 'Unknown'
+
 def normalize_rate(payload: dict) -> NormalizedRate:
     service=payload.get('serviceEligibility') or {}
+    movement=_movement_type(payload)
     accessorials=Decimal(str(payload.get('additionalCharges') or 0))
     fuel=Decimal(str(payload.get('fuelSurchargeAmount') or 0))
     total=Decimal(str(payload.get('total') or 0))
@@ -53,7 +73,7 @@ def normalize_rate(payload: dict) -> NormalizedRate:
         carrier_code='DAFG', carrier_name='Dayton Freight Lines', service='Standard LTL',
         transit_days=int(service.get('serviceDays') or 0), carrier_cost=total, base_charge=base,
         fuel=fuel, accessorials=accessorials, provider_quote_id=str(payload.get('id')) if payload.get('id') is not None else None,
-        movement_type=payload.get('movementType'), warnings=payload.get('warnings') or [],
+        movement_type=movement, warnings=payload.get('warnings') or [],
         metadata={'gross':str(gross),'discount':str(payload.get('discount') or 0),'discount_percent':str(payload.get('discountPercent') or 0),
                   'service_eligibility':service,'upgrade_options':payload.get('upgradeOptions') or [],'disclaimer':payload.get('disclaimer'),'trace_id':payload.get('traceId')}
     )

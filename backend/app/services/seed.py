@@ -5,7 +5,7 @@ from app.models import Customer, Carrier, PricingRule, User
 from app.services.auth import hash_password
 
 def seed(db: Session):
-    if not db.query(User).filter(User.email == settings.default_admin_email.lower()).first():
+    if not db.query(User).filter(User.role == 'admin', User.active.is_(True)).first():
         db.add(User(
             email=settings.default_admin_email.lower(),
             full_name="Valhalla Freight Administrator",
@@ -17,6 +17,7 @@ def seed(db: Session):
 
     if db.query(Customer).count():
         seed_customer_360(db)
+        seed_customer_portal_users(db)
         seed_platform_expansion(db)
         return
 
@@ -36,6 +37,7 @@ def seed(db: Session):
     db.add(PricingRule(name="Acme strategic pricing", priority=10, customer_id=customers[0].id, rule_type="markup_pct", value=Decimal("13"), minimum_margin=Decimal("45")))
     db.commit()
     seed_customer_360(db)
+    seed_customer_portal_users(db)
     seed_platform_expansion(db)
 
 
@@ -67,6 +69,34 @@ def seed_customer_360(db: Session):
             db.add(CustomerActivity(customer_id=customer.id,activity_type="system",subject="Customer 360 profile initialized",body="Account profile, locations and contacts are ready for operational use.",created_by="Valhalla Freight"))
     db.commit()
 
+
+def seed_customer_portal_users(db: Session):
+    """Seed a local customer portal account for Acme Industrial.
+
+    Production accounts will be created through customer/user administration, but this
+    local account gives development a true customer-scoped login immediately.
+    """
+    customer=db.query(Customer).filter(Customer.code=="ACM-001").first()
+    if not customer:
+        return
+    email=settings.default_customer_portal_email.lower().strip()
+    user=db.query(User).filter(User.email==email).first()
+    if not user:
+        from app.models import UserActivity
+        removed=db.query(UserActivity).filter(UserActivity.action=='account_removed').all()
+        if any((x.details or {}).get('target_email')==email for x in removed):return
+        db.add(User(
+            email=email,
+            full_name="Acme Industrial Portal User",
+            password_hash=hash_password(settings.default_customer_portal_password),
+            role="customer",
+            customer_id=customer.id,
+            active=True,
+        ))
+    elif user.role=="customer" and not user.customer_id:
+        user.customer_id=customer.id
+    db.commit()
+
 # --- v0.6 platform expansion seed data ---
 def seed_platform_expansion(db: Session):
     from datetime import date, timedelta
@@ -75,7 +105,7 @@ def seed_platform_expansion(db: Session):
     if not dayton:
         dayton=Carrier(scac='DAFG',name='Dayton Freight Lines',api_enabled=True,on_time_pct=Decimal('0'),claims_pct=Decimal('0'))
         db.add(dayton); db.flush()
-    carriers=db.query(Carrier).all()
+    carriers=db.query(Carrier).filter(Carrier.customer_id.is_(None)).all()
     for i,c in enumerate(carriers):
         profile=db.query(CarrierProfile).filter(CarrierProfile.carrier_id==c.id).first()
         if not profile:

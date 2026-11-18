@@ -1,5 +1,6 @@
 from __future__ import annotations
-from datetime import datetime
+from app.services.operations import live_check,record_run,connection_state
+from datetime import datetime, timezone
 from fastapi import APIRouter,Depends,HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -67,13 +68,14 @@ def list_integrations(db:Session=Depends(get_db)):
     # Ensure the Dayton adapter exists even on databases created before v0.8.0.
     get_dayton_connection(db)
     rows=db.query(IntegrationConnection).order_by(IntegrationConnection.category,IntegrationConnection.provider).all()
-    return [public_connection(x) for x in rows]
+    return [{**public_connection(x),**connection_state(db,x)} for x in rows]
 
 @router.patch('/connection/{integration_id}')
 def update(integration_id:int,payload:IntegrationUpdate,db:Session=Depends(get_db)):
     row=db.get(IntegrationConnection,integration_id)
     if not row: raise HTTPException(404,'Integration not found')
     for k,v in payload.model_dump(exclude_unset=True).items(): setattr(row,k,v)
+    row.settings={k:v for k,v in (row.settings or {}).items() if k!='live_check'}
     db.commit();return {'ok':True}
 
 @router.get('/connection/{integration_id}/manage')
@@ -109,7 +111,8 @@ def remove_credentials(integration_id:int,db:Session=Depends(get_db)):
 def delete_connection(integration_id:int,db:Session=Depends(get_db)):
     row=db.get(IntegrationConnection,integration_id)
     if not row: raise HTTPException(404,'Integration not found')
-    if row.provider == 'Dayton Freight':
+    request=db.info.get('request')
+    if row.provider == 'Dayton Freight' and getattr(getattr(request.state,'auth_user',None),'role',None) != 'admin':
         raise HTTPException(409,'Dayton Freight is a built-in Valhalla carrier adapter and cannot be deleted. Remove its credentials instead.')
     provider=row.provider
     credential=db.query(IntegrationCredential).filter(IntegrationCredential.integration_id==row.id).first()
@@ -124,10 +127,11 @@ async def test(integration_id:int,db:Session=Depends(get_db)):
     row=db.get(IntegrationConnection,integration_id)
     if not row: raise HTTPException(404,'Integration not found')
     if row.provider == 'Dayton Freight':
+        request=db.info.get('request')
+        if request and request.state.auth_user.role=='admin': request.state.integration_company_id=row.customer_id
         return await test_dayton(db)
-    row.last_sync_at=datetime.utcnow(); row.last_error=None
-    if row.status=='available': row.status='configured'
-    db.commit();return {'ok':True,'status':row.status,'message':'Configuration health check completed. Live vendor calls require provider credentials and enabled adapters.'}
+    record_run(db,kind='configuration_review',status='review',summary=f'{row.provider}: configuration inspected; live vendor verification is not implemented',company=row.customer_id,integration=row.id)
+    return {'ok':False,'status':'not_verified','message':'Configuration review only. No live vendor connection was tested; use a supported provider adapter.'}
 
 @router.get('/dayton')
 def dayton_status(db:Session=Depends(get_db)):
@@ -137,7 +141,7 @@ def dayton_status(db:Session=Depends(get_db)):
     credential_source='Integration Hub secure store' if creds.get('configured') else ('Environment (.env)' if env_fallback else 'Not configured')
     username_hint=creds.get('username_hint') or ((client.username[:3]+'••••') if client.username else None)
     return {
-        **public_connection(row),
+        **public_connection(row),**connection_state(db,row),
         'scac':'DAFG','adapter_installed':True,'credentials_configured':adapter.configured(),
         'credential_source':credential_source,'username_hint':username_hint,
         'account':client.account or settings_row.get('account'),
@@ -156,6 +160,7 @@ def configure_dayton(payload:DaytonConfig,db:Session=Depends(get_db)):
     row=get_dayton_connection(db)
     row.environment=payload.environment
     row.settings={**(row.settings or {}),'base_url':payload.base_url,'account':payload.account,'terms':payload.terms,'direct_only':payload.direct_only}
+    row.settings={k:v for k,v in (row.settings or {}).items() if k!='live_check'}
     row.status='configured'
     db.commit(); audit(db,'dayton_configuration_updated',{'environment':payload.environment,'account':payload.account,'terms':payload.terms,'direct_only':payload.direct_only})
     return public_connection(row)
@@ -168,9 +173,11 @@ async def test_dayton(db:Session=Depends(get_db)):
         row.last_sync_at=datetime.utcnow(); row.last_error=None
         row.status='connected' if result.get('ok') else 'configured'
         db.commit(); audit(db,'dayton_connection_test',{'ok':result.get('ok'),'message':result.get('message')})
+        live_check(db,row,result.get('ok'))
         return {**result,'status':row.status}
     except CarrierIntegrationError as exc:
         row.last_sync_at=datetime.utcnow(); row.last_error=str(exc); row.status='error'; db.commit()
+        live_check(db,row,False)
         audit(db,'dayton_connection_test',{'ok':False,'error':str(exc)})
         raise HTTPException(502,str(exc))
 
@@ -221,6 +228,7 @@ async def dayton_rate_test(payload:DaytonRateTest,db:Session=Depends(get_db)):
 
 @router.post('/dayton/tracking-test')
 async def dayton_tracking_test(payload:TrackingTest,db:Session=Depends(get_db)):
+    connection=get_dayton_connection(db)
     try:
         normalized,raw=await dayton_track(payload.number,payload.type,client=DaytonClient.from_db(db)); audit(db,'dayton_tracking_test',{'number_type':payload.type,'event_count':len(normalized)})
         return {'normalized':[x.__dict__ for x in normalized],'raw_response':raw}
@@ -245,25 +253,34 @@ async def dayton_sync_shipment_tracking(shipment_id:int,db:Session=Depends(get_d
     number=shipment.pro_number or shipment.bol_number
     number_type='Pro' if shipment.pro_number else 'BillOfLading'
     if not number: raise HTTPException(400,'A PRO or BOL number is required before Dayton tracking can be synchronized')
+    connection=get_dayton_connection(db)
     try:
         normalized,raw=await dayton_track(number,number_type,client=DaytonClient.from_db(db))
     except CarrierIntegrationError as exc:
+        record_run(db,kind='tracking_sync',status='failed',summary='Dayton tracking refresh failed; review shipment references and connection settings',company=shipment.customer_id,integration=connection.id,shipment=shipment.id,retryable=True)
         raise HTTPException(400,str(exc))
     created=0
     for event in normalized:
-        # Keep carrier synchronization idempotent enough for repeated manual refreshes.
-        exists=db.query(TrackingEvent).filter(TrackingEvent.shipment_id==shipment.id,TrackingEvent.code==event.code,TrackingEvent.source=='dayton_api').first()
-        if exists: continue
+        # A retry must not duplicate an event, while repeated status codes at
+        # different carrier timestamps must remain distinct observations.
         event_time=datetime.utcnow()
+        provided_time=False
         if event.event_time:
-            try: event_time=datetime.fromisoformat(str(event.event_time).replace('Z','+00:00')).replace(tzinfo=None)
-            except Exception: pass
+            try:
+                parsed=datetime.fromisoformat(str(event.event_time).replace('Z','+00:00'))
+                event_time=parsed.astimezone(timezone.utc).replace(tzinfo=None) if parsed.tzinfo else parsed
+                provided_time=True
+            except (ValueError,TypeError):pass
+        query=db.query(TrackingEvent).filter(TrackingEvent.shipment_id==shipment.id,TrackingEvent.code==(event.code or 'DFL'),TrackingEvent.status==event.status,TrackingEvent.description==event.description,TrackingEvent.source=='dayton_api')
+        if provided_time:query=query.filter(TrackingEvent.event_time==event_time)
+        if query.first():continue
         db.add(TrackingEvent(shipment_id=shipment.id,code=event.code or 'DFL',status=event.status,description=event.description,location=event.location,event_time=event_time,source='dayton_api'))
         created+=1
         if event.status=='DELIVERED' and not shipment.delivered_at: shipment.delivered_at=event_time; shipment.status='delivered'
         elif event.status=='PICKED_UP' and not shipment.actual_pickup_at: shipment.actual_pickup_at=event_time; shipment.status='picked_up'
         elif event.status in {'IN_TRANSIT','OUT_FOR_DELIVERY'} and shipment.status not in {'delivered'}: shipment.status=event.status.lower()
     db.commit(); audit(db,'dayton_tracking_sync',{'shipment_id':shipment_id,'number_type':number_type,'created_events':created})
+    record_run(db,kind='tracking_sync',status='succeeded',summary=f'Dayton tracking refreshed: {created} new event(s)',company=shipment.customer_id,integration=connection.id,shipment=shipment.id)
     return {'ok':True,'created_events':created,'carrier':'Dayton Freight','raw_response':raw}
 
 @router.post('/openapi/analyze')
@@ -276,12 +293,14 @@ def openapi_import(payload:OpenApiImport,db:Session=Depends(get_db)):
     if 'dayton' in str(provider).lower():
         provider='Dayton Freight'
         analysis['detected_auth_type']='basic_auth'
-    row=db.query(IntegrationConnection).filter(IntegrationConnection.provider==provider).first()
+    from app.db.tenant_scope import integration_company
+    company=integration_company(db)
+    row=db.query(IntegrationConnection).filter(IntegrationConnection.provider==provider, IntegrationConnection.customer_id==company).first()
     caps=sorted({str(tag).lower().replace(' ','_') for tag in analysis['tags']})
     settings={'openapi_title':analysis['title'],'openapi_version':analysis['version'],'endpoint_count':analysis['endpoint_count'],'tags':analysis['tags'],'detected_auth_type':analysis.get('detected_auth_type','none'),'auth_schemes':analysis.get('auth_schemes',[]),'base_url':(analysis.get('base_urls') or [None])[0]}
     if not row:
-        row=IntegrationConnection(provider=provider,category=payload.category,status='imported',environment='sandbox',capabilities=caps,settings=settings);db.add(row)
+        row=IntegrationConnection(customer_id=company,provider=provider,category=payload.category,status='imported',environment='sandbox',capabilities=caps,settings=settings);db.add(row)
     else:
-        row.status='imported';row.capabilities=caps;row.settings={**(row.settings or {}),**settings}
+        row.status='imported';row.capabilities=caps;row.settings={**{k:v for k,v in (row.settings or {}).items() if k!='live_check'},**settings}
     db.commit();db.refresh(row);audit(db,'openapi_imported',{'provider':provider,'endpoint_count':analysis['endpoint_count']})
     return {'connection':public_connection(row),'analysis':analysis}

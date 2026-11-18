@@ -18,6 +18,10 @@ class CarrierAdapter(ABC):
     async def track(self, number: str, number_type: str='Pro'):
         raise NotImplementedError
 
+    async def book_shipment(self, shipment, db=None):
+        """Optional carrier booking/eBOL capability. Return a normalized dict containing pro_number/provider_reference when available."""
+        raise NotImplementedError
+
     async def get_invoices(self, *args, **kwargs):
         """Optional carrier capability. Implementations normalize invoice records into Valhalla's finance ingestion pipeline."""
         raise NotImplementedError

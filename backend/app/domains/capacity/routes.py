@@ -4,6 +4,7 @@ from fastapi import APIRouter,Depends,HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.db.session import get_db
+from app.db.tenant_scope import tenant
 from app.models import CapacityLoad, CapacityOffer, Carrier
 
 router=APIRouter(prefix='/capacity',tags=['Capacity'])
@@ -21,7 +22,7 @@ def list_loads(db:Session=Depends(get_db)):
     return out
 @router.post('')
 def create_load(payload:LoadCreate,db:Session=Depends(get_db)):
-    row=CapacityLoad(**payload.model_dump());db.add(row);db.commit();db.refresh(row);return {'id':row.id}
+    row=CapacityLoad(customer_id=tenant(db),**payload.model_dump());db.add(row);db.commit();db.refresh(row);return {'id':row.id}
 @router.get('/{load_id}')
 def detail(load_id:int,db:Session=Depends(get_db)):
     l=db.get(CapacityLoad,load_id)

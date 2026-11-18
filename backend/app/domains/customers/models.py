@@ -25,6 +25,7 @@ class CustomerProfile(Base):
     margin_protection_threshold: Mapped[Decimal] = mapped_column(Numeric(12,2), default=Decimal("75.00"))
     margin_protection_internal_notify: Mapped[bool] = mapped_column(Boolean, default=True)
     margin_protection_customer_notify: Mapped[bool] = mapped_column(Boolean, default=True)
+    margin_protection_email_notify: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

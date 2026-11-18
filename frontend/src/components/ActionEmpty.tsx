@@ -1,0 +1,2 @@
+import {Link} from 'react-router-dom';
+export default function ActionEmpty({title,reason,primary='/quotes',label='Create a quote',secondary='/shipments',secondaryLabel='Open shipments'}:{title:string;reason:string;primary?:string;label?:string;secondary?:string;secondaryLabel?:string}){return <div className="actionEmpty"><h3>{title}</h3><p>{reason}</p><div><Link className="btn primary" to={primary}>{label}</Link><Link className="btn secondary" to={secondary}>{secondaryLabel}</Link></div></div>}

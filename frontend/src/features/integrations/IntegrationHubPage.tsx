@@ -1,9 +1,11 @@
+import {formatTimestamp as displayDateTime} from '../../shared/display/preferences';
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {PlugZap,RefreshCw,CheckCircle2,Settings2,Upload,ShieldCheck,Radio,Truck,FileJson,Activity,X,PlayCircle,DatabaseZap,Info,FileSearch,KeyRound,LockKeyhole,Eye,EyeOff,Trash2,Save,ServerCog} from 'lucide-react';
-import {api} from '../../services/api';
+import {api as baseApi} from '../../services/api';
+import {useAuth} from '../../context/AuthContext';
 import {Card,PageHead,Pill} from '../../components/UI';
 
-type Integration={id:number;provider:string;category:string;status:string;environment:string;capabilities:string[];last_sync_at?:string|null;last_error?:string|null;settings?:Record<string,any>};
+type Integration={adapter_available?:boolean;state?:string;credentials_configured?:boolean;connection_verified?:boolean;live_healthy?:boolean;last_success_at?:string|null;customer_id?:number|null;id:number;provider:string;category:string;status:string;environment:string;capabilities:string[];last_sync_at?:string|null;last_error?:string|null;settings?:Record<string,any>};
 type CredentialStatus={configured:boolean;auth_type:string;username_hint?:string|null;has_password:boolean;has_api_key:boolean;has_bearer_token:boolean;client_id_hint?:string|null;has_client_secret:boolean;custom_header_names:string[];configured_at?:string|null;updated_at?:string|null};
 type DaytonStatus=Integration & {scac:string;adapter_installed:boolean;credentials_configured:boolean;credential_source:string;username_hint?:string|null;account?:string|null;base_url:string;auth_type:string;auth_type_key:string;username_limit_note:string;credential_status:CredentialStatus;capability_details:{key:string;label:string;status:string}[]};
 type ManagedConnection={connection:Integration;credentials:CredentialStatus};
@@ -11,6 +13,10 @@ type ManagedConnection={connection:Integration;credentials:CredentialStatus};
 const authLabel=(value:string)=>({none:'No authentication',basic_auth:'Basic Authentication',api_key:'API Key',bearer_token:'Bearer Token',oauth2:'OAuth 2.0',client_credentials:'Client ID / Secret',custom:'Custom Headers'} as Record<string,string>)[value]||value;
 
 export default function IntegrationHubPage(){
+ const {user}=useAuth();const [companyId,setCompanyId]=useState('');const [companies,setCompanies]=useState<{id:number;name:string}[]>([]);
+ const api=<T,>(path:string,init?:RequestInit)=>baseApi<T>(path,{...init,headers:{...init?.headers,...(user?.role==='admin'&&companyId?{'X-Company-Id':companyId}:{})}});
+ useEffect(()=>{if(user?.role==='admin')baseApi<any[]>('/admin/users/companies').then(rows=>setCompanies(rows.filter(c=>!c.manufacturer_id))).catch(e=>setMessage(e.message))},[user?.role]);
+ const pendingManage=useRef<Integration|null>(null);
  const [rows,setRows]=useState<Integration[]>([]);
  const [dayton,setDayton]=useState<DaytonStatus|null>(null);
  const [message,setMessage]=useState('');
@@ -27,11 +33,13 @@ export default function IntegrationHubPage(){
  const [importConnection,setImportConnection]=useState<Integration|null>(null);
  const fileRef=useRef<HTMLInputElement>(null);
  const load=()=>Promise.all([api<Integration[]>('/integrations'),api<DaytonStatus>('/integrations/dayton')]).then(([a,b])=>{setRows(a);setDayton(b)});
- useEffect(()=>{load()},[]);
+ useEffect(()=>{const timer=setInterval(()=>load().catch(e=>setMessage(e.message)),60000);return()=>clearInterval(timer)},[companyId]);
+ useEffect(()=>{setRows([]);setDayton(null);setShowDayton(false);setShowGeneric(false);setShowImport(false);setManaged(null);setDeleteTarget(null);setMessage('');load().then(()=>{const x=pendingManage.current;pendingManage.current=null;if(x){if(x.provider==='Dayton Freight')openDayton();else openGeneric(x)}}).catch(e=>setMessage(e.message))},[companyId]);
  const groups=useMemo(()=>Object.entries(rows.reduce((a:any,x:any)=>((a[x.category]??=[]).push(x),a),{})),[rows]);
  const openDayton=()=>{setWorkbench(null);setShowDayton(true)};
  const openImport=()=>{setImportAnalysis(null);setImportConnection(null);setShowImport(true)};
 
+ function manageRow(x:Integration){const scope=String(x.customer_id||'');if(user?.role==='admin'&&scope!==companyId){pendingManage.current=x;setCompanyId(scope);return}if(x.provider==='Dayton Freight')openDayton();else openGeneric(x)}
  async function openGeneric(x:Integration){setBusy(true);setMessage('');try{const r=await api<ManagedConnection>(`/integrations/connection/${x.id}/manage`);setManaged(r);setShowGeneric(true)}catch(e:any){setMessage(e.message)}finally{setBusy(false)}}
  async function test(id:number){setBusy(true);setMessage('');try{const r:any=await api(`/integrations/connection/${id}/test`,{method:'POST'});setMessage(r.message||'Connection test completed')}catch(e:any){setMessage(e.message)}finally{setBusy(false);load()}}
  async function testDayton(){if(!dayton)return;setBusy(true);setMessage('');try{const r:any=await api('/integrations/dayton/test',{method:'POST'});setMessage(r.message);setWorkbench(r)}catch(e:any){setMessage(e.message)}finally{setBusy(false);load()}}
@@ -72,7 +80,7 @@ export default function IntegrationHubPage(){
  async function removeGenericCredentials(){if(!managed||!confirm(`Remove saved credentials for ${managed.connection.provider}?`))return;setBusy(true);try{await api(`/integrations/connection/${managed.connection.id}/credentials`,{method:'DELETE'});const refreshed=await api<ManagedConnection>(`/integrations/connection/${managed.connection.id}/manage`);setManaged(refreshed);setMessage('Credentials removed.')}catch(e:any){setMessage(e.message)}finally{setBusy(false);load()}}
 
  function requestDelete(x:Integration){
-  if(x.provider==='Dayton Freight'){setMessage('Dayton Freight is a built-in Valhalla carrier adapter and cannot be deleted. You can remove its saved credentials instead.');return}
+  if(x.provider==='Dayton Freight'&&user?.role!=='admin'){setMessage('Dayton Freight is a built-in Valhalla carrier adapter and cannot be deleted. You can remove its saved credentials instead.');return}
   setDeleteConfirm('');setDeleteTarget(x);
  }
  async function deleteAdapter(){
@@ -91,7 +99,7 @@ export default function IntegrationHubPage(){
  async function safePickup(){setBusy(true);setMessage('');try{const r=await api('/integrations/dayton/pickup-test',{method:'POST'});setWorkbench(r);setMessage('Dayton TESTING pickup request completed without creating a live pickup.')}catch(e:any){setMessage(e.message)}finally{setBusy(false)}}
  async function importOpenApi(file:File){setBusy(true);setMessage('');try{const spec=JSON.parse(await file.text());const r:any=await api('/integrations/openapi/import',{method:'POST',body:JSON.stringify({specification:spec})});setImportAnalysis(r.analysis);setImportConnection(r.connection);setMessage(`Imported ${r.analysis.endpoint_count} API operations from ${r.analysis.title}.`);await load()}catch(e:any){setMessage(e.message||'Unable to import OpenAPI specification')}finally{setBusy(false);if(fileRef.current)fileRef.current.value=''}}
 
- return <>
+ return <>{user?.role==='admin'&&<div className="companyScope"><b>Integration account</b><select disabled={busy} value={companyId} onChange={e=>setCompanyId(e.target.value)}><option value="">Valhalla Freight / All integration accounts</option>{companies.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select><span>Choose a company to configure its API connections.</span></div>}
   <PageHead eyebrow="ADMINISTRATION / CONNECTIVITY" title="Carrier Integration Hub" sub="Import carrier APIs, configure authentication securely, test connectivity, and let Valhalla normalize live carrier services without hard-coded credentials." actions={<><button type="button" className="btn secondary" onClick={openImport}><FileJson size={15}/>Import OpenAPI</button><button type="button" className="btn primary" onClick={openDayton}><Truck size={15}/>Dayton Freight</button></>}/>
 
   <div className="integrationGuide">
@@ -100,7 +108,7 @@ export default function IntegrationHubPage(){
    <div><LockKeyhole/><span><b>Secure credentials</b>Secrets are encrypted server-side. Saved passwords/API keys are never returned to the browser or committed to GitHub.</span></div>
   </div>
 
-  <div className="integrationSummary"><Card><PlugZap/><div><b>{rows.length}</b><span>Registered provider adapters</span></div></Card><Card><CheckCircle2/><div><b>{rows.filter(x=>['configured','connected','imported'].includes(x.status)).length}</b><span>Configured / imported</span></div></Card><Card><RefreshCw/><div><b>{rows.filter(x=>x.last_sync_at).length}</b><span>Health checked</span></div></Card></div>
+  <div className="integrationSummary"><Card><PlugZap/><div><b>{rows.length}</b><span>Provider definitions</span></div></Card><Card><PlugZap/><div><b>{rows.filter(x=>x.adapter_available).length}</b><span>Live adapters installed</span></div></Card><Card><CheckCircle2/><div><b>{rows.filter(x=>x.credentials_configured).length}</b><span>Credentials configured</span></div></Card><Card><RefreshCw/><div><b>{rows.filter(x=>x.live_healthy).length}</b><span>Live check current (15 min)</span></div></Card></div>
 
   <Card className="daytonSpotlight">
    <div className="daytonBrand"><div className="daytonLogo">DF</div><div><span>FIRST DIRECT CARRIER ADAPTER</span><h2>Dayton Freight Lines</h2><p>DAFG · REST API · Basic Auth · JSON-first</p></div></div>
@@ -111,13 +119,13 @@ export default function IntegrationHubPage(){
 
   {message&&<div className="integrationNotice">{message}</div>}
 
-  <div className="integrationGroups">{groups.map(([category,items]:any)=><Card key={category}><div className="integrationGroupHead"><div><span>INTEGRATION CATEGORY</span><h3>{category}</h3></div><Pill tone="neutral">{items.length} adapters</Pill></div><div className="integrationCards">{items.map((x:Integration)=>{const isDayton=x.provider==='Dayton Freight';return <div className={`integrationCard ${isDayton?'featured':''}`} key={x.id}><div className="providerMark">{x.provider.slice(0,2).toUpperCase()}</div><div className="providerInfo"><b>{x.provider}</b><span>{x.capabilities?.length?x.capabilities.join(' · '):'Connector framework'}</span></div><Pill tone={isDayton?(dayton?.credentials_configured?'success':'warning'):(x.status==='connected'?'success':x.status==='available'?'neutral':'warning')}>{isDayton?(dayton?.credentials_configured?'live ready':'awaiting credentials'):x.status}</Pill><div className="integrationCardActions"><button type="button" onClick={()=>isDayton?openDayton():openGeneric(x)}><Settings2/> Manage</button>{!isDayton&&<button type="button" className="dangerIconBtn" title="Delete provider adapter" aria-label={`Delete ${x.provider}`} onClick={()=>requestDelete(x)}><Trash2/></button>}</div></div>})}</div></Card>)}</div>
+  <p className="statusStages">Adapter available → Credentials configured → Live connection verified → Healthy (successful check within 15 minutes). Imported specifications and configuration reviews do not verify live service health.</p><div className="integrationGroups">{groups.map(([category,items]:any)=><Card key={category}><div className="integrationGroupHead"><div><span>INTEGRATION CATEGORY</span><h3>{category}</h3></div><Pill tone="neutral">{items.length} adapters</Pill></div><div className="integrationCards">{items.map((x:Integration)=>{const isDayton=x.provider==='Dayton Freight';return <div className={`integrationCard ${isDayton?'featured':''}`} key={x.id}><div className="providerMark">{x.provider.slice(0,2).toUpperCase()}</div><div className="providerInfo"><b>{x.provider}</b>{user?.role==='admin'&&<small>{x.customer_id?companies.find(c=>c.id===x.customer_id)?.name||`Company #${x.customer_id}`:'Valhalla Freight'}</small>}<span>{x.capabilities?.length?x.capabilities.join(' · '):'Connector framework'}</span><small>{x.adapter_available?'Live adapter installed':'Provider definition · live calls not implemented'}</small></div><div><Pill tone={x.live_healthy?'success':'warning'}>{(x.state||'not_verified').replaceAll('_',' ')}</Pill><small className="cellSub">Last successful live check: {x.last_success_at?displayDateTime(x.last_success_at):'Never'}</small></div><div className="integrationCardActions"><button type="button" onClick={()=>manageRow(x)}><Settings2/> Manage</button>{(!isDayton||user?.role==='admin')&&<button type="button" className="dangerIconBtn" title="Delete provider adapter" aria-label={`Delete ${x.provider}`} onClick={()=>requestDelete(x)}><Trash2/></button>}</div></div>})}</div></Card>)}</div>
 
   {showDayton&&dayton&&<div className="vfModalBackdrop" onMouseDown={()=>setShowDayton(false)}><div className="vfModal vfIntegrationModal" onMouseDown={e=>e.stopPropagation()}>
    <div className="vfModalHead"><div><span>DAFG / CARRIER API</span><h2>Dayton Freight Adapter</h2><p>Complete production configuration, secure credentials and API testing inside Valhalla Freight.</p></div><button type="button" aria-label="Close Dayton adapter" onClick={()=>setShowDayton(false)}><X/></button></div>
    <div className="vfModalBody">
     <div className="adapterHero"><DatabaseZap/><div><b>{dayton.adapter_installed?'Adapter installed':'Adapter unavailable'}</b><span>{dayton.base_url}</span></div><Pill tone={dayton.credentials_configured?'success':'warning'}>{dayton.credentials_configured?'LIVE READY':'AWAITING CREDENTIALS'}</Pill></div>
-    <div className="adapterPurpose"><Info/><div><b>Production carrier control room</b><p>Configure Dayton completely here. Once credentials authenticate successfully, Quote Studio can request live Dayton rates and Shipment Control Tower can use Dayton tracking and carrier services automatically.</p></div></div>
+    <div className="adapterPurpose"><Info/><div><b>Production carrier control room</b><p>Configure and test Dayton here. Authentication confirms credentials only. Before a live pilot, prove booking, carrier tracking, delivery/POD and invoicing on the same shipment. Sandbox requests do not confirm a live booking.</p></div></div>
     <div className="adapterGrid">
      <Card><h3>Credentials & authentication</h3><form className="daytonConfigForm credentialForm" onSubmit={saveDaytonConfig}>
       <label>Authentication type<input value="Basic Authentication" disabled/></label>
@@ -132,7 +140,7 @@ export default function IntegrationHubPage(){
      </form>
      <div className="secureStorageNote"><LockKeyhole/><div><b>Encrypted server-side storage</b><p>Credentials are encrypted before they are written to PostgreSQL. Valhalla never sends the saved password back to this page. For production, set a unique <code>INTEGRATION_SECRET_KEY</code> on the backend.</p></div></div>
      <button type="button" className="btn secondary wide" onClick={testDayton} disabled={busy}><Activity size={14}/>Test Dayton authentication</button></Card>
-     <Card><h3>Adapter status</h3><div className="adapterField"><span>Credential source</span><b>{dayton.credential_source}</b></div><div className="adapterField"><span>Username</span><b>{dayton.username_hint||'Not configured'}</b></div><div className="adapterField"><span>Account</span><b>{dayton.account||'Not configured'}</b></div><div className="adapterField"><span>Status</span><b>{dayton.credentials_configured?'Ready for authentication test':'Credentials required'}</b></div><h3 className="subHead">Supported operations</h3><div className="capabilityChecklist">{dayton.capability_details.map(x=><div key={x.key}><CheckCircle2/><span>{x.label}</span></div>)}</div><div className="credentialsExplainer"><KeyRound/><div><b>Configured vs. connected</b><p>Saving credentials makes the adapter configured. A successful carrier authentication test marks the connection connected/live.</p></div></div></Card>
+     <Card><h3>Adapter status</h3><div className="adapterField"><span>Credential source</span><b>{dayton.credential_source}</b></div><div className="adapterField"><span>Username</span><b>{dayton.username_hint||'Not configured'}</b></div><div className="adapterField"><span>Account</span><b>{dayton.account||'Not configured'}</b></div><div className="adapterField"><span>Status</span><b>{(dayton.state||'not_verified').replaceAll('_',' ')}</b></div><h3 className="subHead">Supported operations</h3><div className="capabilityChecklist">{dayton.capability_details.map(x=><div key={x.key}><CheckCircle2/><span>{x.label}</span></div>)}</div><div className="credentialsExplainer"><KeyRound/><div><b>Configured vs. connected</b><p>Saving credentials makes the adapter configured. A successful carrier authentication test verifies the connection. Live health is current for 15 minutes and includes the last successful check.</p></div></div></Card>
     </div>
     <div className="apiWorkbench"><h3>Dayton API Workbench</h3><p>These diagnostics use the exact encrypted credentials saved above. Credentials never enter the response payload.</p><div className="workbenchGrid"><form onSubmit={runRate}><b>Live rate test</b><div className="miniForm"><input name="origin" placeholder="Origin ZIP" required/><input name="destination" placeholder="Destination ZIP" required/><input name="class" defaultValue="70" placeholder="Class"/><input name="weight" type="number" defaultValue="500"/><input name="qty" type="number" defaultValue="1"/></div><button className="btn secondary" disabled={busy}><PlayCircle size={14}/>Run rate test</button></form><form onSubmit={runTracking}><b>Tracking test</b><div className="miniForm"><select name="type"><option>Pro</option><option>BillOfLading</option><option>PurchaseOrder</option><option>Pickup</option><option>PSID</option></select><input name="number" placeholder="Tracking number" required/></div><button className="btn secondary" disabled={busy}><PlayCircle size={14}/>Track shipment</button></form><div className="pickupTest"><b>Safe pickup connectivity test</b><p>Uses Dayton's documented TESTING reference so a live pickup is not created.</p><button type="button" className="btn secondary" onClick={safePickup} disabled={busy}><PlayCircle size={14}/>Run TESTING pickup</button></div></div></div>
     {workbench&&<div className="adapterResponse"><div><b>Latest adapter response</b><button type="button" onClick={()=>setWorkbench(null)}>Clear</button></div><pre>{JSON.stringify(workbench,null,2)}</pre></div>}

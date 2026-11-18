@@ -1,5 +1,5 @@
 export type CustomerSummary = {
-  id:number; code:string; name:string; status:string; industry?:string|null; billing_email?:string|null;
+  manufacturer_id?:number|null;id:number; code:string; name:string; status:string; industry?:string|null; billing_email?:string|null;
   default_markup_pct:number|string; credit_limit:number|string; location_count:number; contact_count:number;
   shipment_count:number; active_shipment_count:number; revenue_total:number|string;
 };
@@ -7,7 +7,7 @@ export type CustomerProfile = {
   id:number; customer_id:number; legal_name?:string|null; website?:string|null; phone?:string|null;
   account_manager?:string|null; sales_owner?:string|null; payment_terms:string; tax_exempt:boolean; credit_hold:boolean;
   onboarding_status:string; preferred_contact_method:string; billing_address?:Record<string,string>|null;
-  operating_preferences?:Record<string,unknown>; margin_protection_threshold:number|string; margin_protection_internal_notify:boolean; margin_protection_customer_notify:boolean; created_at:string; updated_at:string;
+  operating_preferences?:Record<string,unknown>; margin_protection_threshold:number|string; margin_protection_internal_notify:boolean; margin_protection_customer_notify:boolean; margin_protection_email_notify:boolean; created_at:string; updated_at:string;
 };
 export type CustomerLocation = {
   id:number; customer_id:number; name:string; location_type:string; address1:string; address2?:string|null; city:string; state:string;

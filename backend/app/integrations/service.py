@@ -9,9 +9,11 @@ SENSITIVE_KEYS={'password','api_key','client_secret','bearer_token','token','sec
 
 
 def get_dayton_connection(db):
-    row=db.query(IntegrationConnection).filter(IntegrationConnection.provider==DAYTON_PROVIDER).first()
+    from app.db.tenant_scope import integration_company
+    company=integration_company(db)
+    row=db.query(IntegrationConnection).filter(IntegrationConnection.provider==DAYTON_PROVIDER, IntegrationConnection.customer_id==company).first()
     if not row:
-        row=IntegrationConnection(provider=DAYTON_PROVIDER,category='Carrier Connectivity',status='available',environment='sandbox',capabilities=['rating','pickup','tracking','bol','documents','service'])
+        row=IntegrationConnection(customer_id=company,provider=DAYTON_PROVIDER,category='Carrier Connectivity',status='available',environment='sandbox',capabilities=['rating','pickup','tracking','bol','documents','service'])
         db.add(row); db.commit(); db.refresh(row)
     return row
 
@@ -19,7 +21,7 @@ def get_dayton_connection(db):
 def public_connection(row):
     settings=row.settings or {}
     return {
-      'id':row.id,'provider':row.provider,'category':row.category,'status':row.status,'environment':row.environment,
+      'customer_id':row.customer_id,'id':row.id,'provider':row.provider,'category':row.category,'status':row.status,'environment':row.environment,
       'capabilities':row.capabilities or [],'last_sync_at':row.last_sync_at,'last_error':row.last_error,
       'settings':{k:v for k,v in settings.items() if k not in SENSITIVE_KEYS},
     }
@@ -43,6 +45,7 @@ def save_credentials(db, integration: IntegrationConnection, auth_type: str, pay
     for k,v in payload.items():
         if v is None and k in current:
             current.pop(k,None)
+    integration.settings={k:v for k,v in (integration.settings or {}).items() if k!='live_check'}
     encrypted=encrypt_secret_payload(current)
     if not row:
         row=IntegrationCredential(integration_id=integration.id,auth_type=auth_type or 'none',encrypted_payload=encrypted)
@@ -60,6 +63,7 @@ def save_credentials(db, integration: IntegrationConnection, auth_type: str, pay
 def delete_credentials(db, integration: IntegrationConnection):
     row=get_credential_row(db,integration.id)
     if row: db.delete(row)
+    integration.settings={k:v for k,v in (integration.settings or {}).items() if k!='live_check'}
     integration.status='configured' if integration.settings else 'available'
     integration.last_error=None
     db.commit()
@@ -87,6 +91,11 @@ def public_credentials(db, integration: IntegrationConnection):
 def audit(db, action: str, details: dict, entity_id: str='DAFG'):
     # Never place credential values in audit details.
     safe={k:v for k,v in (details or {}).items() if k.lower() not in SENSITIVE_KEYS and 'password' not in k.lower() and 'secret' not in k.lower() and 'token' not in k.lower()}
+    request=db.info.get('request')
+    user=getattr(request.state,'auth_user',None) if request else None
+    if user:
+        from app.services.user_activity import add_activity
+        add_activity(db,user,action,details={'entity_id':entity_id})
     db.add(AuditEvent(entity_type='integration',entity_id=entity_id,action=action,actor='Valhalla Freight',details=safe))
     db.commit()
 

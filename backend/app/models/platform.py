@@ -113,6 +113,22 @@ class CarrierLane(Base):
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     notes: Mapped[str | None] = mapped_column(Text)
 
+
+class CarrierRateControl(Base):
+    __tablename__ = 'carrier_rate_controls'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    carrier_id: Mapped[int] = mapped_column(ForeignKey('carriers.id'), index=True)
+    scope: Mapped[str] = mapped_column(String(20), default='global')
+    origin_region: Mapped[str | None] = mapped_column(String(120))
+    destination_region: Mapped[str | None] = mapped_column(String(120))
+    hide_rates: Mapped[bool] = mapped_column(Boolean, default=False)
+    direct_only: Mapped[bool] = mapped_column(Boolean, default=False)
+    starts_at: Mapped[datetime | None] = mapped_column(DateTime)
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    reason: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
 class CarrierContract(Base):
     __tablename__ = 'carrier_contracts'
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -149,6 +165,7 @@ class CarrierActivity(Base):
 
 class CapacityLoad(Base):
     __tablename__ = 'capacity_loads'
+    customer_id: Mapped[int | None] = mapped_column(ForeignKey('customers.id'), index=True)
     id: Mapped[int] = mapped_column(primary_key=True)
     shipment_id: Mapped[int | None] = mapped_column(ForeignKey('shipments.id'), index=True)
     mode: Mapped[str] = mapped_column(String(30), default='FTL')
@@ -218,8 +235,69 @@ class MarginProtectionNotification(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
     read_at: Mapped[datetime | None] = mapped_column(DateTime)
 
+
+class OperationalNotification(Base):
+    __tablename__ = 'operational_notifications'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    audience: Mapped[str] = mapped_column(String(30), default='internal', index=True)
+    notification_type: Mapped[str] = mapped_column(String(60), default='operations')
+    severity: Mapped[str] = mapped_column(String(30), default='warning')
+    title: Mapped[str] = mapped_column(String(220))
+    body: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(30), default='unread', index=True)
+    customer_id: Mapped[int | None] = mapped_column(ForeignKey('customers.id'), index=True)
+    shipment_id: Mapped[int | None] = mapped_column(ForeignKey('shipments.id'), index=True)
+    location_id: Mapped[int | None] = mapped_column(ForeignKey('customer_locations.id'), index=True)
+    target_path: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+
+class ShipmentDocument(Base):
+    __tablename__ = 'shipment_documents'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    shipment_id: Mapped[int] = mapped_column(ForeignKey('shipments.id'), index=True)
+    document_type: Mapped[str] = mapped_column(String(60), default='Other')
+    original_name: Mapped[str] = mapped_column(String(255))
+    stored_name: Mapped[str] = mapped_column(String(255))
+    content_type: Mapped[str | None] = mapped_column(String(120))
+    size_bytes: Mapped[int] = mapped_column(Integer, default=0)
+    uploaded_by_role: Mapped[str] = mapped_column(String(30), default='broker')
+    uploaded_by: Mapped[str] = mapped_column(String(180), default='Valhalla Freight')
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+class EmailOutbox(Base):
+    __tablename__ = 'email_outbox'
+    customer_id: Mapped[int | None] = mapped_column(ForeignKey('customers.id'), index=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    related_type: Mapped[str] = mapped_column(String(40), default='system')
+    related_id: Mapped[str | None] = mapped_column(String(60), index=True)
+    recipient_type: Mapped[str] = mapped_column(String(30), default='internal')
+    to_addresses: Mapped[list] = mapped_column(JSON, default=list)
+    subject: Mapped[str] = mapped_column(String(240))
+    body: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(30), default='queued')
+    error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+class CarrierSubmission(Base):
+    __tablename__ = 'carrier_submissions'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    shipment_id: Mapped[int] = mapped_column(ForeignKey('shipments.id'), index=True)
+    carrier_id: Mapped[int | None] = mapped_column(ForeignKey('carriers.id'))
+    submission_type: Mapped[str] = mapped_column(String(40), default='booking')
+    status: Mapped[str] = mapped_column(String(30), default='pending')
+    provider_reference: Mapped[str | None] = mapped_column(String(100))
+    pro_number: Mapped[str | None] = mapped_column(String(60))
+    request_summary: Mapped[dict] = mapped_column(JSON, default=dict)
+    response_summary: Mapped[dict] = mapped_column(JSON, default=dict)
+    error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
 class IntegrationConnection(Base):
     __tablename__ = 'integration_connections'
+    customer_id: Mapped[int | None] = mapped_column(ForeignKey('customers.id'), nullable=True, index=True)
     id: Mapped[int] = mapped_column(primary_key=True)
     provider: Mapped[str] = mapped_column(String(100), index=True)
     category: Mapped[str] = mapped_column(String(60), index=True)
@@ -248,3 +326,19 @@ class AuditEvent(Base):
     actor: Mapped[str] = mapped_column(String(180), default='system')
     details: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class UserActivity(Base):
+    """Historical identity snapshots survive account removal; never store secrets."""
+    __tablename__ = 'user_activity'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    user_email: Mapped[str] = mapped_column(String(180))
+    user_name: Mapped[str] = mapped_column(String(180))
+    role: Mapped[str] = mapped_column(String(40))
+    company_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    action: Mapped[str] = mapped_column(String(80))
+    path: Mapped[str] = mapped_column(String(240), default='')
+    status_code: Mapped[int | None] = mapped_column(Integer)
+    details: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)

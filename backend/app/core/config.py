@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     access_token_minutes: int = 720
     default_admin_email: str = "admin@valhallafreight.local"
     default_admin_password: str = "Valhalla123!"
+    default_customer_portal_email: str = "customer@acme.local"
+    default_customer_portal_password: str = "Valhalla123!"
     document_storage_path: str = "/app/storage"
     max_compliance_document_mb: int = 15
     dayton_api_base_url: str = "https://api.daytonfreight.com"
@@ -18,6 +20,13 @@ class Settings(BaseSettings):
     dayton_api_password: str = ""
     dayton_api_account: str = ""
     integration_secret_key: str = ""
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = "notifications@valhallafreight.local"
+    smtp_use_tls: bool = True
+    broker_notification_email: str = ""
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()

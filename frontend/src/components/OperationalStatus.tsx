@@ -1,0 +1,5 @@
+import {useEffect,useState} from 'react';
+import {api} from '../services/api';
+import {formatDateTime} from '../shared/display/preferences';
+export function useOperations(){const [data,setData]=useState<any>(null),[error,setError]=useState('');const refresh=()=>api<any>('/operations/summary').then(d=>{setData(d);setError('')}).catch(e=>setError(e.message));useEffect(()=>{refresh();const t=setInterval(refresh,60000);window.addEventListener('operational-notification-updated',refresh);return()=>{clearInterval(t);window.removeEventListener('operational-notification-updated',refresh)}},[]);return {data,error,refresh}}
+export function OperationalStatus(){const {data,error}=useOperations();return <div className="sidefoot" title={error||`Last app/database response: ${data?formatDateTime(data.checked_at):'Not checked'}. External services require separate live checks.`}><div><b>{error?'Status unavailable':data?'App responding':'Checking app status…'}</b><span>{data?`${data.healthy} live service checks current · ${data.connections.length-data.healthy} unverified/stale`:'External services not verified'}</span><span>App & database checked separately</span></div></div>}

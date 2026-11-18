@@ -15,13 +15,18 @@ class DaytonClient:
         # Database-managed credentials are preferred; .env remains a backward-compatible fallback.
         from app.integrations.service import get_dayton_connection, credential_payload
         row=get_dayton_connection(db)
+        from app.db.tenant_scope import integration_company
+        company=integration_company(db)
+        fallback_username='' if company is not None else settings.dayton_api_username
+        fallback_password='' if company is not None else settings.dayton_api_password
+        fallback_account='' if company is not None else settings.dayton_api_account
         cfg=row.settings or {}
         creds=credential_payload(db,row.id)
         return cls(
             base_url=cfg.get('base_url') or settings.dayton_api_base_url,
-            username=creds.get('username') if creds.get('username') is not None else settings.dayton_api_username,
-            password=creds.get('password') if creds.get('password') is not None else settings.dayton_api_password,
-            account=cfg.get('account') or settings.dayton_api_account,
+            username=creds.get('username') if creds.get('username') is not None else fallback_username,
+            password=creds.get('password') if creds.get('password') is not None else fallback_password,
+            account=cfg.get('account') or fallback_account,
         )
 
     @property

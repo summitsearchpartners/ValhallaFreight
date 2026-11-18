@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel, Field
 from app.schemas.common import ORMModel
 
@@ -14,7 +15,11 @@ class UserOut(ORMModel):
     email: str
     full_name: str
     role: str
+    customer_id: int | None = None
+    muse_partner_access: bool = False
     active: bool
+    last_login_at: datetime | None = None
+    last_seen_at: datetime | None = None
 
 
 class TokenResponse(BaseModel):

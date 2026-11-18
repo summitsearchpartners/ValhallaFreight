@@ -6,6 +6,7 @@ from app.db.base import Base
 
 class Customer(Base):
     __tablename__ = "customers"
+    manufacturer_id: Mapped[int | None] = mapped_column(ForeignKey("customers.id"), nullable=True, index=True)
     id: Mapped[int] = mapped_column(primary_key=True)
     code: Mapped[str] = mapped_column(String(30), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(180), index=True)
@@ -21,8 +22,16 @@ class Customer(Base):
     contacts = relationship("CustomerContact", back_populates="customer", cascade="all, delete-orphan")
     activities = relationship("CustomerActivity", back_populates="customer", cascade="all, delete-orphan")
 
+class MuseAccount(Base):
+    __tablename__ = "muse_accounts"
+    customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id", ondelete="CASCADE"), primary_key=True)
+    account_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    first_preview_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+
 class Carrier(Base):
     __tablename__ = "carriers"
+    customer_id: Mapped[int | None] = mapped_column(ForeignKey("customers.id"), index=True)
     id: Mapped[int] = mapped_column(primary_key=True)
     scac: Mapped[str] = mapped_column(String(10), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(180))
@@ -64,6 +73,19 @@ class Quote(Base):
     expires_at: Mapped[datetime | None] = mapped_column(DateTime)
     requested_pickup_at: Mapped[datetime | None] = mapped_column(DateTime)
     requested_delivery_at: Mapped[datetime | None] = mapped_column(DateTime)
+    payment_terms: Mapped[str] = mapped_column(String(40), default="Prepaid")
+
+class MuseQuoteRate(Base):
+    __tablename__ = "muse_quote_rates"
+    quote_id: Mapped[int] = mapped_column(ForeignKey("quotes.id", ondelete="CASCADE"), primary_key=True)
+    customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id", ondelete="CASCADE"), index=True)
+    carrier_name: Mapped[str] = mapped_column(String(180))
+    customer_price: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    revision: Mapped[str] = mapped_column(String(36))
+    carrier_id: Mapped[int | None] = mapped_column(ForeignKey("carriers.id"))
+    carrier_cost: Mapped[Decimal | None] = mapped_column(Numeric(12,2))
+    transit_days: Mapped[int | None] = mapped_column(Integer)
+
 
 class Shipment(Base):
     __tablename__ = "shipments"
@@ -84,6 +106,7 @@ class Shipment(Base):
     hazmat_emergency_contact: Mapped[str | None] = mapped_column(String(180))
     hazmat_emergency_phone: Mapped[str | None] = mapped_column(String(60))
     declared_value: Mapped[Decimal | None] = mapped_column(Numeric(12,2))
+    payment_terms: Mapped[str] = mapped_column(String(40), default="Prepaid")
     origin: Mapped[dict] = mapped_column(JSON)
     destination: Mapped[dict] = mapped_column(JSON)
     handling_units: Mapped[list] = mapped_column(JSON)
@@ -100,6 +123,18 @@ class Shipment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     customer = relationship("Customer", back_populates="shipments")
     carrier = relationship("Carrier")
+
+    @property
+    def carrier_name(self):
+        return self.carrier.name if self.carrier else None
+
+    @property
+    def carrier_scac(self):
+        return self.carrier.scac if self.carrier else None
+
+    @property
+    def customer_name(self):
+        return self.customer.name if self.customer else None
 
 class TrackingEvent(Base):
     __tablename__ = "tracking_events"
@@ -130,6 +165,8 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String(180))
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(40), default="admin")
+    customer_id: Mapped[int | None] = mapped_column(ForeignKey("customers.id"), nullable=True, index=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

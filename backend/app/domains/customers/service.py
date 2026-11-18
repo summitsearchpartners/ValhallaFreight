@@ -23,6 +23,7 @@ def _summary(db: Session, customer: Customer) -> dict:
     revenue = db.query(func.coalesce(func.sum(Shipment.customer_charge), 0)).filter(Shipment.customer_id == customer.id).scalar() or Decimal("0")
     return {
         "id": customer.id,
+        "manufacturer_id": customer.manufacturer_id,
         "code": customer.code,
         "name": customer.name,
         "status": customer.status,
@@ -38,17 +39,33 @@ def _summary(db: Session, customer: Customer) -> dict:
     }
 
 
-def list_customers(db: Session) -> list[dict]:
-    return [_summary(db, c) for c in db.query(Customer).order_by(Customer.name).all()]
+def list_customers(db: Session, include_workspace: bool=False) -> list[dict]:
+    from app.db.tenant_scope import tenant, broker_workspace
+    company=tenant(db)
+    query=db.query(Customer)
+    if company is not None and not include_workspace:
+        query=query.filter(Customer.id!=company) if broker_workspace(db) else query.filter(Customer.manufacturer_id==company)
+    return [_summary(db, c) for c in query.order_by(Customer.name).all()]
 
 
 def create_customer(db: Session, payload: CustomerCreate) -> dict:
     # Use a temporary unique value to obtain the database ID, then replace it with
     # a stable system-owned code. This keeps customer code generation out of the UI.
+    from app.services.commercial_privacy import customer_session
+    if customer_session(db) and 'default_markup_pct' in payload.model_fields_set:
+        raise HTTPException(403,'Broker pricing rules are private')
     supplied_code = payload.code.strip().upper() if payload.code else None
     if supplied_code and db.query(Customer).filter(Customer.code == supplied_code).first():
         raise HTTPException(status_code=409, detail="Customer code already exists")
     base = payload.model_dump(exclude={"profile", "code"})
+    from app.db.tenant_scope import tenant
+    company=tenant(db)
+    if company is not None:
+        if base.get('manufacturer_id') not in (None,company):raise HTTPException(403,'Customers can be added only to your company workspace')
+        base['manufacturer_id']=company
+    elif base.get('manufacturer_id'):
+        parent=db.get(Customer,base['manufacturer_id'])
+        if not parent or parent.manufacturer_id is not None:raise HTTPException(422,'Select a parent company as the owner')
     item = Customer(code=supplied_code or f"PENDING-{uuid4().hex[:12].upper()}", **base)
     db.add(item)
     db.flush()
@@ -64,6 +81,9 @@ def create_customer(db: Session, payload: CustomerCreate) -> dict:
 
 
 def update_customer(db: Session, customer_id: int, payload: CustomerUpdate) -> dict:
+    from app.services.commercial_privacy import customer_session
+    if customer_session(db) and 'default_markup_pct' in payload.model_fields_set:
+        raise HTTPException(403,'Broker pricing rules are private')
     item = _customer_or_404(db, customer_id)
     data = payload.model_dump(exclude_unset=True)
     profile_data = data.pop("profile", None)
@@ -109,10 +129,21 @@ def add_location(db: Session, customer_id: int, payload: LocationCreate):
     db.add(item); db.commit(); db.refresh(item); return item
 
 
+
+def update_location(db: Session, customer_id: int, location_id: int, payload: LocationCreate):
+    _customer_or_404(db, customer_id)
+    item = db.query(CustomerLocation).filter(CustomerLocation.id == location_id, CustomerLocation.customer_id == customer_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Customer location not found")
+    for key, value in payload.model_dump().items():
+        setattr(item, key, value)
+    db.commit(); db.refresh(item); return item
+
 def add_contact(db: Session, customer_id: int, payload: ContactCreate):
     _customer_or_404(db, customer_id)
     if payload.primary:
-        db.query(CustomerContact).filter(CustomerContact.customer_id == customer_id).update({"primary": False})
+        for contact in db.query(CustomerContact).filter(CustomerContact.customer_id == customer_id).all():
+            contact.primary = False
     item = CustomerContact(customer_id=customer_id, **payload.model_dump())
     db.add(item); db.commit(); db.refresh(item); return item
 
@@ -132,6 +163,7 @@ def update_margin_protection(db: Session, customer_id: int, payload: MarginProte
     profile.margin_protection_threshold = payload.threshold
     profile.margin_protection_internal_notify = payload.internal_notify
     profile.margin_protection_customer_notify = payload.customer_notify
+    profile.margin_protection_email_notify = payload.email_notify
     db.add(CustomerActivity(
         customer_id=customer_id, activity_type='margin_protection',
         subject='Margin protection policy updated',
@@ -144,4 +176,5 @@ def update_margin_protection(db: Session, customer_id: int, payload: MarginProte
         'threshold': profile.margin_protection_threshold,
         'internal_notify': profile.margin_protection_internal_notify,
         'customer_notify': profile.margin_protection_customer_notify,
+        'email_notify': profile.margin_protection_email_notify,
     }

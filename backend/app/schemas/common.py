@@ -20,6 +20,7 @@ class Address(BaseModel):
     location_id: int | None = None
     # Original ZIP returned by the verified address source (Google Places or saved location).
     # Shipment approval compares this to the ZIP that was actually rated.
+    manual_confirmation: bool = False
     verified_postal_code: str | None = None
     # City/state returned by the verified address source. These let booking verify
     # that the user did not alter the locality after selecting a Google result.

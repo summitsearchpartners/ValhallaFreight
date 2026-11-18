@@ -1,9 +1,9 @@
 import {useEffect,useMemo,useState} from 'react';
 import {X} from 'lucide-react';
 
-type Field={key:string;label:string;type?:'text'|'email'|'tel'|'number'|'date'|'textarea'|'select'|'checkbox'|'url';options?:string[];placeholder?:string;span?:2};
+type Field={key:string;label:string;type?:'text'|'email'|'tel'|'number'|'date'|'datetime-local'|'textarea'|'select'|'checkbox'|'url';options?:string[];placeholder?:string;span?:2};
 export default function RecordModal({open,title,eyebrow='CARRIER 360',fields,initial={},submitLabel='Save',onClose,onSubmit}:{open:boolean;title:string;eyebrow?:string;fields:Field[];initial?:Record<string,any>;submitLabel?:string;onClose:()=>void;onSubmit:(data:Record<string,any>)=>Promise<void>|void}){
-  const seed=useMemo(()=>Object.fromEntries(fields.map(f=>[f.key,initial[f.key]??(f.type==='checkbox'?false:'')])),[fields,initial]);
+  const seed=useMemo(()=>Object.fromEntries(fields.map(f=>{let v=initial[f.key]??(f.type==='checkbox'?false:'');if(f.type==='datetime-local'&&typeof v==='string')v=v.slice(0,16);return [f.key,v]})),[fields,initial]);
   const [form,setForm]=useState<Record<string,any>>(seed);const [busy,setBusy]=useState(false);const [err,setErr]=useState('');
   useEffect(()=>{if(open){setForm(seed);setErr('')}},[open,seed]);
   if(!open)return null;

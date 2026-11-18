@@ -1,3 +1,3 @@
-import {api} from '../../services/api';
+import {api,apiBlob} from '../../services/api';
 import type {ShipmentDetail} from './types';
-export const shipmentApi={detail:(id:number)=>api<ShipmentDetail>(`/shipments/${id}`),update:(id:number,payload:any)=>api<ShipmentDetail>(`/shipments/${id}`,{method:'PATCH',body:JSON.stringify(payload)})};
+export const shipmentApi={detail:(id:number)=>api<ShipmentDetail>(`/shipments/${id}`),update:(id:number,payload:any)=>api<ShipmentDetail>(`/shipments/${id}`,{method:'PATCH',body:JSON.stringify(payload)}),uploadDocument:(id:number,form:FormData)=>api<any>(`/shipments/${id}/documents`,{method:'POST',body:form}),deleteDocument:(id:number,docId:number)=>api<any>(`/shipments/${id}/documents/${docId}`,{method:'DELETE'}),openDocument:async(id:number,docId:number,name:string)=>{const blob=await apiBlob(`/shipments/${id}/documents/${docId}`);const url=URL.createObjectURL(blob);const w=window.open(url,'_blank');if(!w){const a=document.createElement('a');a.href=url;a.download=name;a.click()}setTimeout(()=>URL.revokeObjectURL(url),60000)}};

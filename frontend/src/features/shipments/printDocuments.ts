@@ -46,11 +46,11 @@ function commodityRows(s:ShipmentDetail){
   const rows=source.map((u:any,index:number)=>{
     const haz=(s.accessorials||[]).includes('hazmat')?'X':'';
     const dims=[u.length_in,u.width_in,u.height_in].every(Boolean)?`${u.length_in} × ${u.width_in} × ${u.height_in}`:'';
-    const pkgQty=index===0?(s.package_count??''):'';
-    const pkgType=index===0?(s.package_type||''):'';
+    const pkgQty=u.quantity||'';
+    const pkgType=u.type||s.package_type||'Pallet';
     const nmfc=index===0?(s.nmfc_number||u.nmfc||''):(u.nmfc||'');
     const description=index===0?(s.commodity_description||u.description||'General freight'):(u.description||'General freight');
-    return `<div class="r"><div>${esc(u.quantity||'')}</div><div>${esc(u.type||'Pallet')}</div><div>${esc(pkgQty)}</div><div>${esc(pkgType)}</div><div>${esc(u.freight_class||'')}</div><div>${esc(nmfc)}</div><div>${haz}</div><div>${esc(description)}</div><div>${esc(dims)}</div><div>${esc(u.weight_lbs||'')}</div></div>`;
+    return `<div class="r"><div>${esc(u.quantity||'')}</div><div>${esc(u.type||'Pallet')}</div><div>${esc(pkgQty)}</div><div>${esc(pkgType)}</div><div>${esc(u.freight_class||'')}</div><div>${esc(nmfc)}</div><div>${haz}</div><div>${esc(description)}</div><div>${esc(dims)}</div><div>${esc(Number(u.weight_lbs||0)*Number(u.quantity||0))}</div></div>`;
   });
   while(rows.length<7) rows.push('<div class="r"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>');
   return rows.join('');
@@ -59,7 +59,7 @@ function commodityRows(s:ShipmentDetail){
 
 export function printBOL(s:ShipmentDetail){
   const totalQty=(s.handling_units||[]).reduce((a:number,u:any)=>a+Number(u.quantity||0),0);
-  const totalWeight=(s.handling_units||[]).reduce((a:number,u:any)=>a+Number(u.weight_lbs||0),0);
+  const totalWeight=(s.handling_units||[]).reduce((a:number,u:any)=>a+Number(u.weight_lbs||0)*Number(u.quantity||0),0);
   const accessorials=(s.accessorials||[]).map(accessorialLabel).join(' • ')||'None';
   const originName=s.origin?.name||s.customer_name||'Shipper';
   const destinationName=s.destination?.name||'Consignee';
@@ -84,7 +84,7 @@ export function printBOL(s:ShipmentDetail){
       <div class="refs"><div><span class="lbl">Carrier</span><span class="val">${esc(s.carrier_name||'Pending')}</span></div><div><span class="lbl">SCAC</span><span class="val">${esc(s.carrier_scac||'—')}</span></div><div><span class="lbl">PRO #</span><span class="val">${esc(s.pro_number||'Pending')}</span></div><div><span class="lbl">Customer Account</span><span class="val">${esc(s.customer_name||'—')}</span></div></div>
     </div>
 
-    <div class="servicegrid"><div class="services"><span class="lbl">Comments / Special Services</span><b>${esc(accessorials)}</b></div><div class="terms"><span class="lbl">Freight Charges</span><div class="checks"><span class="check"><i class="boxcheck"></i>Prepaid</span><span class="check"><i class="boxcheck"></i>Collect</span><span class="check"><i class="boxcheck on"></i>Third Party</span></div></div></div>
+    <div class="servicegrid"><div class="services"><span class="lbl">Comments / Special Services</span><b>${esc(accessorials)}</b></div><div class="terms"><span class="lbl">Freight Charges</span><div class="checks"><span class="check"><i class="boxcheck ${String(s.payment_terms||'Prepaid').toLowerCase()==='prepaid'?'on':''}"></i>Prepaid</span><span class="check"><i class="boxcheck ${String(s.payment_terms||'').toLowerCase()==='collect'?'on':''}"></i>Collect</span><span class="check"><i class="boxcheck ${String(s.payment_terms||'').toLowerCase().startsWith('third party')?'on':''}"></i>Third Party</span></div><div style="margin-top:4px;font-size:6.8px">${esc(s.payment_terms||'Prepaid')}</div></div></div>
 
     <div class="pohead"><div>Purchase Order / Customer Reference</div><div># Pkgs</div><div>Weight</div><div>Pallet Y/N</div><div>Additional Shipper Information</div></div>
     <div class="rows po"><div class="r"><div>${esc([s.po_number,s.customer_reference].filter(Boolean).join(' / ')||'—')}</div><div>${esc(s.package_count??totalQty)}</div><div>${esc(totalWeight)} lb</div><div>Y</div><div>${s.package_type?`Package type: ${esc(s.package_type)} · `:''}Required delivery: ${dateTime(s.requested_delivery_at)}${s.scheduled_pickup_at?` · Scheduled pickup: ${dateTime(s.scheduled_pickup_at)}`:''}</div></div></div>
@@ -101,4 +101,4 @@ export function printBOL(s:ShipmentDetail){
   </div>`);
 }
 
-export function printShippingLabel(s:ShipmentDetail){openDoc(`Shipping Label ${s.shipment_number}`,`<div class="bol" style="padding:18px"><div class="brand"><img src="${window.location.origin}/valhalla-freight-logo.png"/><div><strong>Valhalla Freight</strong><small>Shipping Label</small></div></div><div class="sectionbar">LTL SHIPPING LABEL</div><div style="padding:16px"><div class="barcode">${barcodeBars(s.pro_number||s.shipment_number)}</div><div class="barcodeText" style="text-align:center">${esc(s.pro_number||s.shipment_number)}</div><div class="addresses" style="margin-top:16px"><div class="party"><span class="lbl">FROM</span><div class="company">${esc(s.origin?.name||s.customer_name||'Shipper')}</div>${addressLines({...s.origin,name:undefined})}</div><div class="party"><span class="lbl">TO</span><div class="company" style="font-size:17px">${esc(s.destination?.name||'Consignee')}</div><div style="font-size:14px;line-height:1.45">${addressLines({...s.destination,name:undefined})}</div></div></div><div class="refs" style="border:1px solid #111;margin-top:12px"><div><span class="lbl">Carrier</span><span class="val">${esc(s.carrier_name||'')}</span></div><div><span class="lbl">SCAC</span><span class="val">${esc(s.carrier_scac||'')}</span></div><div><span class="lbl">BOL</span><span class="val">${esc(s.bol_number||'')}</span></div><div><span class="lbl">PRO</span><span class="val">${esc(s.pro_number||'Pending')}</span></div></div></div></div>`)}
+export function printShippingLabel(s:ShipmentDetail){openDoc(`Shipping Label ${s.shipment_number}`,`<div class="bol" style="padding:18px"><div class="brand"><img src="${window.location.origin}/valhalla-freight-logo.png"/><div><strong>Valhalla Freight</strong><small>Shipping Label</small></div></div><div class="sectionbar">${s.transport_mode==='truckload'?'TRUCKLOAD':'LTL'} SHIPPING LABEL</div><div style="padding:16px"><div class="barcode">${barcodeBars(s.pro_number||s.shipment_number)}</div><div class="barcodeText" style="text-align:center">${esc(s.pro_number||s.shipment_number)}</div><div class="addresses" style="margin-top:16px"><div class="party"><span class="lbl">FROM</span><div class="company">${esc(s.origin?.name||s.customer_name||'Shipper')}</div>${addressLines({...s.origin,name:undefined})}</div><div class="party"><span class="lbl">TO</span><div class="company" style="font-size:17px">${esc(s.destination?.name||'Consignee')}</div><div style="font-size:14px;line-height:1.45">${addressLines({...s.destination,name:undefined})}</div></div></div><div class="refs" style="border:1px solid #111;margin-top:12px"><div><span class="lbl">Carrier</span><span class="val">${esc(s.carrier_name||'')}</span></div><div><span class="lbl">SCAC</span><span class="val">${esc(s.carrier_scac||'')}</span></div><div><span class="lbl">BOL</span><span class="val">${esc(s.bol_number||'')}</span></div><div><span class="lbl">PRO</span><span class="val">${esc(s.pro_number||'Pending')}</span></div></div></div></div>`)}

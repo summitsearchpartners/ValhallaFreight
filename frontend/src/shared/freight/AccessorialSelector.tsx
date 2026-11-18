@@ -63,7 +63,7 @@ export function accessorialLabel(code:string){
 }
 
 export default function AccessorialSelector({value,onChange,compact=false}:{value:string[];onChange:(value:string[])=>void;compact?:boolean}){
- const [open,setOpen]=useState(true),[tab,setTab]=useState<keyof typeof ACCESSORIAL_GROUPS>('Delivery Services');
+ const [open,setOpen]=useState(true),[tab,setTab]=useState<keyof typeof ACCESSORIAL_GROUPS>(compact?'Shipment Characteristics':'Delivery Services');
  const normalizedValue=normalizeAccessorials(value);
  const toggle=(code:string)=>onChange(normalizedValue.includes(code)?normalizedValue.filter(x=>x!==code):[...normalizedValue,code]);
  return <div className={`accessorialSelector ${compact?'compact':''}`}>

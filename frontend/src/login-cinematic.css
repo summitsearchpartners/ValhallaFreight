@@ -1,0 +1,53 @@
+.loginPage{grid-template-columns:minmax(0,1.08fr) minmax(390px,.92fr)}
+.loginHero{isolation:isolate;background:#081522;min-height:100svh}
+.loginHero:after{display:none}
+.loginFilm{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.loginFilmPoster,.loginFilmVideo,.loginFilmShade,.loginFilmGrain{position:absolute;inset:0;width:100%;height:100%}
+.loginFilmPoster{background:url('/media/freight-road-film-poster.jpg') center center/cover no-repeat}
+.loginFilmVideo{object-fit:cover;object-position:62% center;filter:saturate(.94) contrast(1.04)}
+.loginFilmShade{background:linear-gradient(180deg,#06111e55 0%,#07162308 20%,#07152230 42%,#06111edb 75%,#05101af2 100%),linear-gradient(90deg,#0614208c 0%,#10223022 65%,#07142055 100%)}
+.loginFilmGrain{opacity:.025;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' opacity='.3' filter='url(%23n)'/%3E%3C/svg%3E")}
+.loginHero .loginHeroInner{min-height:100svh;padding:clamp(30px,3.6vw,58px);z-index:2}
+.loginHero .loginBrand{gap:16px;padding-right:90px}
+.loginHero .loginBrand img{width:76px;height:76px;object-fit:contain;flex:none}
+.loginHero .loginBrand strong{font-size:clamp(19px,1.8vw,27px);text-shadow:0 2px 12px #0006}
+.loginHero .loginBrand span{color:#d0dce4;font-size:8px;letter-spacing:1.5px}
+.loginHero .heroCopy{margin:auto 0 26px;padding-top:180px;max-width:690px}
+.loginHero .loginBadge{background:#091b28a8;border-color:#f1864d66;color:#ffb383;backdrop-filter:blur(10px);font-size:9px;letter-spacing:.9px}
+.loginHero .heroCopy h1{font-size:clamp(40px,3.8vw,66px);letter-spacing:-2.2px;line-height:1.06;margin:24px 0 18px;font-weight:850;text-shadow:0 5px 28px #0005}
+.loginHero .heroCopy h1 em{color:#ff8a46;font-style:normal}
+.loginHero .heroCopy p{font-size:clamp(12px,1vw,15px);line-height:1.8;color:#c7d5df;max-width:580px}
+.loginHero .loginBenefits{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:690px}
+.loginHero .loginBenefits>div{align-items:flex-start;flex-direction:column;padding:15px 12px;gap:11px;border-radius:10px;background:#1022308c;border:1px solid #d2e4f21c;backdrop-filter:blur(12px)}
+.loginHero .loginBenefits svg{width:19px;height:19px;color:#ff914e}
+.loginHero .loginBenefits b{font-size:11px;line-height:1.4;color:#f2f6f9}
+.loginHero .loginBenefits small{font-size:9px;line-height:1.6;color:#a8bdcc}
+.loginHero .heroFooter{margin-top:23px;color:#9aafbf;font-size:10px}
+.loginFilmControl{position:absolute;top:40px;right:28px;z-index:4;display:flex;align-items:center;gap:7px;background:#0615227a;border:1px solid #d4e7f036;border-radius:30px;color:#e6f0f6;padding:9px 11px;font-family:inherit;font-size:10px;font-weight:600;cursor:pointer;backdrop-filter:blur(8px)}
+.loginFilmControl:hover{background:#183144c9}
+.loginFilmControl:focus-visible{outline:2px solid #ff9659;outline-offset:4px}
+@media(max-height:780px) and (min-width:981px){
+ .loginHero .loginHeroInner{padding:28px 32px}
+ .loginHero .loginBrand img{width:60px;height:60px}
+ .loginHero .heroCopy{padding-top:50px;margin-bottom:20px}
+ .loginHero .heroCopy h1{font-size:clamp(37px,3.5vw,52px);margin:18px 0 14px}
+ .loginHero .loginBenefits>div{padding:12px}
+ .loginFilmControl{top:30px;right:24px}
+}
+@media(max-width:1150px) and (min-width:981px){
+ .loginHero .loginHeroInner{padding:30px}
+ .loginHero .loginBrand{gap:10px}
+ .loginHero .loginBrand img{width:58px;height:58px}
+ .loginHero .loginBrand span{font-size:6px}
+ .loginHero .heroCopy h1{font-size:42px}
+ .loginHero .loginBenefits b{font-size:10px}
+ .loginHero .loginBenefits small{font-size:8px}
+ .loginFilmControl{top:33px;right:20px;padding:8px}
+}
+@media(max-width:980px){.loginPage{grid-template-columns:1fr}.loginHero{display:none}}
+@media(prefers-reduced-motion:reduce){.loginFilmVideo{display:none}}
+.loginHero .heroCopy h1,.loginHero .loginBrand strong,.loginCard h2{font-family:Manrope,Inter,system-ui,sans-serif}
+.loginPage,.loginFormSide,.loginCard{min-width:0}
+.loginInput input{min-width:0}
+.loginMeta{max-width:100%;text-align:center}
+@media(max-width:980px){.loginPage{grid-template-columns:minmax(0,1fr)}.loginFormSide{width:100%}.loginCard{width:100%;max-width:470px}.loginSubmit{white-space:normal}}

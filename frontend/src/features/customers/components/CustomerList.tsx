@@ -15,7 +15,7 @@ export default function CustomerList(){
   const active=rows.filter(x=>x.status==='active').length;
   const revenue=rows.reduce((a,b)=>a+Number(b.revenue_total||0),0);
   return <>
-    <PageHead eyebrow="CUSTOMER 360" title="Customer Accounts" sub="A single source of truth for shipper profiles, locations, contacts, commercial terms, activity and shipment history." actions={<button className="btn primary" onClick={()=>setCreateOpen(true)}><Plus size={16}/>New customer</button>}/>
+    <PageHead eyebrow="CUSTOMER 360" title="Customer Accounts" sub="Manage your customer records, shipping locations, contacts and freight history." actions={<button className="btn primary" onClick={()=>setCreateOpen(true)}><Plus size={16}/>New customer</button>}/>
     <div className="customerKpis">
       <Card><span>Active accounts</span><strong>{active}</strong><small>{rows.length} total customer records</small></Card>
       <Card><span>Customer locations</span><strong>{rows.reduce((a,b)=>a+b.location_count,0)}</strong><small>Shipping origins and destinations</small></Card>

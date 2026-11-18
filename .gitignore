@@ -50,3 +50,25 @@ pgdata/
 
 # TypeScript build cache
 *.tsbuildinfo
+
+.expo/
+safe-load-mobile/node_modules/
+safe-load-mobile/dist/
+
+# Local backups and sensitive documents
+ValhallaFreight-Backups/
+*.dump
+*.sql.gz
+*.tar.gz
+
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Safe Load test photos - pending review
+docs/safe-load-test-photos/
+
+# Generated TypeScript cache
+*.tsbuildinfo

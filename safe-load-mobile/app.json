@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "Safe Load",
+    "slug": "valhalla-safe-load",
+    "version": "0.19.16",
+    "orientation": "default",
+    "scheme": "valhallasafeload",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.valhallafreight.safeload",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Scan the arriving driver's license barcode and truck VIN for warehouse release.",
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
+      }
+    },
+    "android": {
+      "package": "com.valhallafreight.safeload",
+      "permissions": [
+        "CAMERA"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
+      "allowBackup": false,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0b1d29"
+      }
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Safe Load to scan the driver's license and truck VIN.",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
+        }
+      ],
+      "expo-secure-store"
+    ],
+    "icon": "./assets/icon.png"
+  }
+}

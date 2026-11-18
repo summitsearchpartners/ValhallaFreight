@@ -19,7 +19,7 @@ services:
     build: ./backend
     environment:
       DATABASE_URL: postgresql+psycopg://valhalla_freight:valhalla_freight@db:5432/valhalla_freight
-      CORS_ORIGINS: http://localhost:5173
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-valhalla-local-development-secret-change-me}
       INTEGRATION_SECRET_KEY: ${INTEGRATION_SECRET_KEY:-}
       DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@valhallafreight.local}
@@ -30,6 +30,13 @@ services:
       DAYTON_API_USERNAME: ${DAYTON_API_USERNAME:-}
       DAYTON_API_PASSWORD: ${DAYTON_API_PASSWORD:-}
       DAYTON_API_ACCOUNT: ${DAYTON_API_ACCOUNT:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-notifications@valhallafreight.local}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+      BROKER_NOTIFICATION_EMAIL: ${BROKER_NOTIFICATION_EMAIL:-}
     ports:
       - "8000:8000"
     volumes:
@@ -42,7 +49,7 @@ services:
   frontend:
     build: ./frontend
     environment:
-      VITE_API_URL: http://localhost:8000/api/v1
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000/api/v1}
       VITE_GOOGLE_MAPS_API_KEY: ${VITE_GOOGLE_MAPS_API_KEY:-}
     ports:
       - "5173:5173"

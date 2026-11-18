@@ -1,5 +1,5 @@
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_user
 from app.models import User
@@ -9,13 +9,18 @@ from app.services.auth import verify_password, create_access_token
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post("/login", response_model=TokenResponse)
-def login(payload: LoginRequest, db: Session = Depends(get_db)):
+def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == payload.email.lower().strip()).first()
     if not user or not user.active or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
     user.last_login_at = datetime.utcnow()
+    user.last_seen_at = user.last_login_at
+    from app.services.user_activity import add_activity
+    add_activity(db,user,"login",path="/auth/login",status_code=200)
     db.commit()
     db.refresh(user)
+    from app.services.muse_partner import has_access
+    user.muse_partner_access=has_access(db,user)
     token = create_access_token(user.id, user.email, user.role)
     return TokenResponse(access_token=token, user=UserOut.model_validate(user))
 
