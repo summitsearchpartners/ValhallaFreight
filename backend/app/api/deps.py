@@ -38,7 +38,7 @@ def get_current_user(
     context = request.headers.get('X-Company-Id')
     if context:
         if user.role != 'admin':
-            raise HTTPException(403, 'Only Valhalla Freight Admin can select another company context')
+            raise HTTPException(403, 'Only Valhalla TMS Admin can select another company context')
         try: company_id = int(context)
         except ValueError: raise HTTPException(422, 'Invalid company context')
         from app.models import Customer

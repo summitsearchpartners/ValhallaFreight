@@ -12,10 +12,10 @@ type Props={
 };
 
 /**
- * Valhalla Freight shared verified-address input.
+ * Valhalla TMS shared verified-address input.
  *
  * Uses Google Places AutocompleteSuggestion (Places API New) and renders the
- * suggestion list inside Valhalla Freight. This avoids native PAC dropdown
+ * suggestion list inside Valhalla TMS. This avoids native PAC dropdown
  * stacking/portal issues inside Quote Bucket shipment confirmation while still
  * returning Google's verified structured address data.
  */
@@ -34,7 +34,7 @@ export default function AddressField({value,onValueChange,onAddressSelected,plac
     let active=true;
     if(!googlePlacesConfigured()){
       setLoadError(true);
-      console.warn('Valhalla Freight Address Service: Google Places API key is not configured.');
+      console.warn('Valhalla TMS Address Service: Google Places API key is not configured.');
       return;
     }
     loadGoogleMaps().then(async()=>{
@@ -46,11 +46,11 @@ export default function AddressField({value,onValueChange,onAddressSelected,plac
       setReady(Boolean(lib?.AutocompleteSuggestion));
       setLoadError(!lib?.AutocompleteSuggestion);
       if(!lib?.AutocompleteSuggestion){
-        console.warn('Valhalla Freight Address Service: AutocompleteSuggestion is unavailable. Verify Places API (New) is enabled for this key.');
+        console.warn('Valhalla TMS Address Service: AutocompleteSuggestion is unavailable. Verify Places API (New) is enabled for this key.');
       }
     }).catch(err=>{
       if(active){setReady(false);setLoadError(true)}
-      console.warn('Valhalla Freight Address Service: Google Places failed to initialize.',err);
+      console.warn('Valhalla TMS Address Service: Google Places failed to initialize.',err);
     });
     return()=>{active=false;window.clearTimeout(timer.current)};
   },[]);
@@ -85,7 +85,7 @@ export default function AddressField({value,onValueChange,onAddressSelected,plac
       setOpen(next.length>0);
     }catch(err){
       if(id===requestId.current){setSuggestions([]);setOpen(false)}
-      console.warn('Valhalla Freight Address Service: address prediction request failed.',err);
+      console.warn('Valhalla TMS Address Service: address prediction request failed.',err);
     }
   }
 
@@ -111,7 +111,7 @@ export default function AddressField({value,onValueChange,onAddressSelected,plac
       setOpen(false);
       if(placesLib?.AutocompleteSessionToken)sessionToken.current=new placesLib.AutocompleteSessionToken();
     }catch(err){
-      console.warn('Valhalla Freight Address Service: selected address details could not be loaded.',err);
+      console.warn('Valhalla TMS Address Service: selected address details could not be loaded.',err);
     }
   }
 

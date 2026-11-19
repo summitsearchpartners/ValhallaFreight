@@ -147,7 +147,7 @@ def scope_writes(session, context, instances):
             parent=session.get(IntegrationConnection, obj.integration_id)
             if parent is None or parent.customer_id != integration_scope: raise HTTPException(403, 'Integration access denied')
         if company is None: continue
-        if isinstance(obj,BrokerCustomerAssignment):raise HTTPException(403,'Only Valhalla Freight Admin can assign broker customers')
+        if isinstance(obj,BrokerCustomerAssignment):raise HTTPException(403,'Only Valhalla TMS Admin can assign broker customers')
         if safe_partner_owns(session,obj):continue
         from app.models import OperationalNotification
         if isinstance(obj,OperationalNotification) and obj.notification_type=='safe_load':
@@ -177,7 +177,7 @@ def scope_writes(session, context, instances):
                 if obj.manufacturer_id!=company:raise HTTPException(403,'New customers must belong to your company')
             elif obj.manufacturer_id==company or (broker_workspace(session) and obj.id!=company and owns(session,obj.id,company)):
                 if 'manufacturer_id' in changed:raise HTTPException(403,'Customer ownership cannot be reassigned here')
-            else:raise HTTPException(403,'Parent company records are managed by Valhalla Freight')
+            else:raise HTTPException(403,'Parent company records are managed by Valhalla TMS')
         elif hasattr(obj, 'customer_id') and obj.__tablename__ != 'users':
             if not owns(session,obj.customer_id,company):raise HTTPException(403,'Company access denied')
         carrier_id = getattr(obj, 'carrier_id', None)
@@ -193,7 +193,7 @@ def scope_writes(session, context, instances):
                     allowed_carrier=session.execute(select(carriers.id).where(carriers.id==carrier_id)).first() is not None
             if not allowed_carrier:raise HTTPException(403, 'Carrier belongs to another workspace')
             if broker_workspace(session) and obj.__tablename__.startswith('carrier_') and not hasattr(obj, 'shipment_id') and carrier.customer_id != company:
-                raise HTTPException(403, 'Shared carriers are managed by Valhalla Freight')
+                raise HTTPException(403, 'Shared carriers are managed by Valhalla TMS')
         for field, model in [('shipment_id', Shipment), ('quote_id', Quote)]:
             ref = getattr(obj, field, None)
             if ref is not None:

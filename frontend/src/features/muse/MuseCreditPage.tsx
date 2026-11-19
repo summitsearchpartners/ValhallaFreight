@@ -25,7 +25,7 @@ export default function MuseCreditPage(){
  }
  return <><PageHead eyebrow="MUSE FREIGHT" title="Credit application" sub={enrollment?.manufacturer_name||'Manufacturer onboarding'} actions={<Link className="btn secondary" to={quote?`/quotes/${encodeURIComponent(quote)}`:'/quotes'}>Back to quote</Link>}/>
  {error&&<p className="inlineError" role="alert">{error}</p>}
- {enrollment&&!enrollment.enabled?<Card><p>Muse rates have not been enabled for this manufacturer. Contact your Valhalla Freight administrator.</p></Card>:
+ {enrollment&&!enrollment.enabled?<Card><p>Muse rates have not been enabled for this manufacturer. Contact your Valhalla TMS administrator.</p></Card>:
  enrollment&&['pending','approved'].includes(enrollment.application_status)?<Card><h2>{enrollment.can_book?'Muse booking approved':'Application sent to Muse Freight'}</h2>
  <p>{enrollment.can_book?'Your manufacturer is approved. Return to the quote and select a Muse rate to complete shipment booking.':'Muse will review your completed application. All authorized users in your manufacturer workspace share this status.'}</p>
  <div className="museRateFooter"><button className="btn secondary" onClick={()=>refresh().catch(e=>setError(e.message))}>Refresh approval status</button>

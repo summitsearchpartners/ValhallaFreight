@@ -1,5 +1,5 @@
 export const roleLabels: Record<string,string> = {
-  admin: 'Valhalla Freight Admin',
+  admin: 'Valhalla TMS Admin',
   muse_admin:'Muse Freight Admin',
   manufacturer_admin: 'Manufacturer Admin',
   manufacturer: 'Manufacturer',

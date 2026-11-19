@@ -137,7 +137,7 @@ def _quote_email_body(q: Quote, customer: Customer, selected: dict) -> str:
         freight_lines.append(f"{u.get('quantity',1)} {u.get('type','Pallet')} · {u.get('weight_lbs',0)} lb · Class {u.get('freight_class','—')} · {u.get('length_in','—')} x {u.get('width_in','—')} x {u.get('height_in','—')} in")
     accessorials=', '.join(str(x).replace('_',' ').title() for x in (q.accessorials or [])) or 'None'
     pickup=q.requested_pickup_at.strftime('%m/%d/%Y') if q.requested_pickup_at else 'Not specified'
-    return f"""Valhalla Freight Quote
+    return f"""Valhalla TMS Quote
 
 Quote: {q.quote_number}
 Customer: {customer.name}
@@ -157,7 +157,7 @@ Special services / accessorials: {accessorials}
 
 This quote reflects the customer-facing transportation price only. Carrier buy cost, internal markup, and gross-profit information are not included.
 
-Valhalla Freight
+Valhalla TMS
 Built for the long haul.
 """
 
@@ -180,7 +180,7 @@ def email_quote(quote_ref: str, payload: QuoteEmailRequest, db: Session = Depend
         target=(contact.email or '').strip() if contact else ''
     if not target or '@' not in target:
         raise HTTPException(status_code=400,detail='No valid customer quote email is available. Enter an email address or add one in Customer 360.')
-    row=queue_email(db,to_addresses=[target],subject=f'Valhalla Freight Quote {q.quote_number}',body=_quote_email_body(q,customer,selected),recipient_type='customer',related_type='quote',related_id=str(q.id),customer_id=q.customer_id)
+    row=queue_email(db,to_addresses=[target],subject=f'Valhalla TMS Quote {q.quote_number}',body=_quote_email_body(q,customer,selected),recipient_type='customer',related_type='quote',related_id=str(q.id),customer_id=q.customer_id)
     db.commit()
     return {'ok':True,'to':target,'status':row.status if row else 'queued'}
 

@@ -7,7 +7,7 @@ from app.core.roles import BROKER_ROLES, COMPANY_ROLES, COMPANY_ADMIN_ROLES
 
 def require_muse_admin(request: Request, user=Depends(get_current_user)):
     if user.role != 'admin' or getattr(request.state, 'support_company_id', None) is not None:
-        raise HTTPException(403, 'Valhalla Freight Admin required to manage Muse Freight')
+        raise HTTPException(403, 'Valhalla TMS Admin required to manage Muse Freight')
     return user
 
 
@@ -47,7 +47,7 @@ def internal_access(request: Request, user=Depends(get_current_user), db=Depends
             if not carrier:
                 raise HTTPException(404, 'Carrier not found')
             if carrier.customer_id != user.customer_id:
-                raise HTTPException(403, 'Shared carriers are managed by Valhalla Freight')
+                raise HTTPException(403, 'Shared carriers are managed by Valhalla TMS')
     if path.startswith('/customers') and request.method != 'GET':
         parts=path.strip('/').split('/')
         if len(parts)==1 and request.method=='POST':return user

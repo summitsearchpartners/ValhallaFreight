@@ -65,7 +65,7 @@ def settings(request:Request, db:Session=Depends(get_db), user:User=Depends(get_
     table, key, identity = scope(user,request)
     row=db.execute(text(f'SELECT company_name,logo_data,show_pricing FROM {table} WHERE {key}=:id'), {'id':identity}).mappings().first()
     company = db.get(Customer, identity) if key=='customer_id' else None
-    return {**dict(row),'show_pricing':bool(row['show_pricing'])} if row else {'company_name':company.name if company else 'Valhalla Freight', 'logo_data':'', 'show_pricing':False}
+    return {**dict(row),'show_pricing':bool(row['show_pricing'])} if row else {'company_name':company.name if company else 'Valhalla TMS', 'logo_data':'', 'show_pricing':False}
 
 @router.put('/settings')
 def update_settings(payload:SettingsIn, request:Request, db:Session=Depends(get_db), user:User=Depends(get_current_user)):

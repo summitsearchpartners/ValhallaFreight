@@ -97,13 +97,13 @@ export default function Layout({children}:{children:ReactNode}){
   return <div className={`shell ${collapsed?'shellCollapsed':''}`}>
     <aside className="sidebar">
       <div className="brand">
-        <div className="brandLogoFrame"><img className="brandLogo" src={workspace.logo_data||"/valhalla-freight-logo.png"} alt={`${workspace.company_name||"Valhalla Freight"} logo`}/></div>
-        <div className="brandWords"><strong>{workspace.company_name||(manufacturer?"Manufacturer Workspace":isBroker(user?.role)?"Broker Workspace":"Valhalla Freight")}</strong><small>Transportation Operating System</small></div>
+        <div className="brandLogoFrame"><img className="brandLogo" src={workspace.logo_data||"/valhalla-tms-powered.webp"} alt={`${workspace.company_name||"Valhalla TMS"} logo`}/></div>
+        <div className="brandWords"><strong>{workspace.company_name||(manufacturer?"Manufacturer Workspace":isBroker(user?.role)?"Broker Workspace":"Valhalla TMS")}</strong><small>Transportation Operating System</small></div>
         <button className="sideCollapse" onClick={()=>setCollapsed(v=>!v)} title={collapsed?'Expand navigation':'Collapse navigation'}>{collapsed?<ChevronRight size={16}/>:<ChevronLeft size={16}/>}</button>
       </div>
       <nav>{nav.map(([section,items])=>items.some(([, ,path])=>allowed(path))&&<div className="navsection" key={section}><span>{section}</span>{items.filter(([, ,path])=>allowed(path)).map(([Icon,label,path])=>{const financeAlert=path==='/finance'&&financeExceptionCount>0;return <NavLink key={path} to={path} end={path==='/' } title={collapsed?`${label}${financeAlert?` · ${financeExceptionCount} margin exception${financeExceptionCount===1?'':'s'}`:''}`:undefined}><Icon size={18}/><b>{label}</b>{financeAlert&&<span className="navAlertBadge" aria-label={`${financeExceptionCount} margin protection exceptions`}>{financeExceptionCount>99?'99+':financeExceptionCount}</span>}</NavLink>})}</div>)}</nav>
       <div className="sidebarFooter">
-       <div className="manufacturerPowered"><img src="/valhalla-freight-logo.png" alt="Valhalla Freight"/><span>Platform by<br/><b>Valhalla Freight</b></span></div>
+       <div className="manufacturerPowered"><img src="/valhalla-tms-powered.webp" alt="Valhalla TMS"/><span>Platform by<br/><b>Valhalla TMS</b></span></div>
        <OperationalStatus/>
        <MusePoweredBy/>
        <div className="sideVersion">VF TOS · v0.19.16</div>
@@ -133,7 +133,7 @@ export default function Layout({children}:{children:ReactNode}){
               <div className="profileMenuHead"><div className="avatar lg">{initials}</div><div><b>{user?.full_name}</b><span>{user?.email}</span></div></div>
               <button onClick={()=>{navigate("/my-profile");setProfileOpen(false)}}><UserRound size={15}/><div><b>My profile</b><span>Account and personal settings</span></div></button>
               <button onClick={()=>{navigate("/system-settings");setProfileOpen(false)}}><Settings size={15}/><div><b>System settings</b><span>Users, roles and integrations</span></div></button>
-              <button className="danger" onClick={logout}><LogOut size={15}/><div><b>{user?.actual_role==='admin'?'End support session':'Sign out'}</b><span>{user?.actual_role==='admin'?'Keep your main admin window signed in':'End this Valhalla Freight session'}</span></div></button>
+              <button className="danger" onClick={logout}><LogOut size={15}/><div><b>{user?.actual_role==='admin'?'End support session':'Sign out'}</b><span>{user?.actual_role==='admin'?'Keep your main admin window signed in':'End this Valhalla TMS session'}</span></div></button>
             </div>}
           </div>
         </div>
@@ -143,9 +143,9 @@ export default function Layout({children}:{children:ReactNode}){
 
     {searchOpen&&<div className="commandOverlay" onMouseDown={e=>{if(e.currentTarget===e.target)setSearchOpen(false)}}>
       <div className="commandPalette">
-        <div className="commandInput"><Search size={19}/><input ref={searchRef} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search Valhalla Freight..."/><button onClick={()=>setSearchOpen(false)}>ESC</button></div>
+        <div className="commandInput"><Search size={19}/><input ref={searchRef} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search Valhalla TMS..."/><button onClick={()=>setSearchOpen(false)}>ESC</button></div>
         <div className="commandLabel"><Command size={12}/> Quick navigation</div>
-        <div className="commandResults">{filtered.length?filtered.map(({label,detail,path,icon:Icon})=><button key={path} onClick={()=>go(path)}><span className="commandIcon"><Icon size={17}/></span><div><b>{label}</b><small>{detail}</small></div><span>↵</span></button>):<div className="commandEmpty">No Valhalla Freight results found.</div>}</div>
+        <div className="commandResults">{filtered.length?filtered.map(({label,detail,path,icon:Icon})=><button key={path} onClick={()=>go(path)}><span className="commandIcon"><Icon size={17}/></span><div><b>{label}</b><small>{detail}</small></div><span>↵</span></button>):<div className="commandEmpty">No Valhalla TMS results found.</div>}</div>
         <div className="commandHint"><span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span><span><kbd>Enter</kbd> Open</span><span><kbd>Esc</kbd> Close</span></div>
       </div>
     </div>}

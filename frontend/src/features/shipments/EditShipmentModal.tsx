@@ -39,7 +39,7 @@ export default function EditShipmentModal({shipment,close,saved}:Props){
  return <div className="modalShade"><form className="entityModal shipmentEditModal" onSubmit={submit}>
   <div className="entityModalHead"><div className="entityModalIcon"><FileText/></div><div><span>SHIPMENT CONTROL TOWER</span><h2>{`Edit ${shipment.shipment_number}`}</h2></div><button type="button" onClick={close}><X/></button></div>
 
-  <div className="shipmentEditIntro"><PackageSearch/><div><b>Shipment references & commodity details</b><p>These fields are stored on the shipment and flow automatically into the Valhalla Freight Bill of Lading.</p></div></div>
+  <div className="shipmentEditIntro"><PackageSearch/><div><b>Shipment references & commodity details</b><p>These fields are stored on the shipment and flow automatically into the Valhalla TMS Bill of Lading.</p></div></div>
   <div className="entityFormGrid">
    <div className="lockedBolField"><span>BOL number</span><strong>{shipment.bol_number||'—'}</strong><small>System assigned at shipment creation · cannot be changed</small></div>
    <label>PRO number<input value={form.pro_number} onChange={e=>set('pro_number',e.target.value)} placeholder="Carrier PRO number"/></label>

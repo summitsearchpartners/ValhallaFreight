@@ -8,7 +8,7 @@ from app.models import MarginProtectionNotification
 
 def super_admin(request:Request,user=Depends(get_current_user)):
     if user.role!="admin" or getattr(request.state,"support_company_id",None) is not None:
-        raise HTTPException(403,"Valhalla Freight Super Admin required for Customer Portal administration")
+        raise HTTPException(403,"Valhalla TMS Super Admin required for Customer Portal administration")
     return user
 
 

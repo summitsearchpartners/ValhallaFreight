@@ -18,7 +18,7 @@ export default function PortalSupportGate(){
   const expired=()=>{clearPortalSession(company);setReady(false);setError('Your support session ended or expired. Verify again in Portal Access.')};window.addEventListener('portal-session-expired',expired);const timer=setInterval(()=>{const session=portalSession(company);if(session?.expires_at&&new Date(session.expires_at.endsWith('Z')?session.expires_at:session.expires_at+'Z').getTime()<=Date.now())expired()},10000);
   return()=>{active=false;clearInterval(timer);window.removeEventListener('portal-session-expired',expired)};
  },[company]);
- if(loading)return <div className="supportAccessState"><ShieldCheck size={32}/><h1>Opening verified customer portal…</h1><p>Your Valhalla Freight Admin identity remains active.</p></div>;
+ if(loading)return <div className="supportAccessState"><ShieldCheck size={32}/><h1>Opening verified customer portal…</h1><p>Your Valhalla TMS Admin identity remains active.</p></div>;
  if(!ready)return <div className="supportAccessState"><AlertTriangle size={32}/><h1>Portal verification required</h1><p>{error||'Select a customer and verify your administrator credentials to start a support session.'}</p><Link className="btn primary" to={`/admin/portal-access?customer_id=${company}`}>Go to Portal Access</Link></div>;
  return <CustomerPortalApp/>;
 }

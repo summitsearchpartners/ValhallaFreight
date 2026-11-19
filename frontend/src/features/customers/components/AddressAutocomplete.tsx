@@ -58,7 +58,7 @@ export default function AddressAutocomplete({value,onChange}:Props){
     return()=>{disposed=true;if(element?.remove)element.remove();};
   },[apiKey]);
   return <div className="addressAssistant">
-    <div className="addressAssistantHead"><div><MapPin size={17}/><div><b>Smart address lookup</b><span>Select the verified address and Valhalla Freight fills City, State and ZIP.</span></div></div>{status==='ready'&&<em><ShieldCheck size={12}/>Google Places</em>}</div>
+    <div className="addressAssistantHead"><div><MapPin size={17}/><div><b>Smart address lookup</b><span>Select the verified address and Valhalla TMS fills City, State and ZIP.</span></div></div>{status==='ready'&&<em><ShieldCheck size={12}/>Google Places</em>}</div>
     {status==='loading'&&apiKey&&<div className="addressLoading"><Search size={14}/>Loading address search…</div>}
     <div ref={host}/>
     {(status==='manual'||status==='error')&&<div className="addressManualNotice"><b>{status==='error'?'Address lookup could not load.':'Address autocomplete is ready to configure.'}</b><span>{status==='manual'?'Add VITE_GOOGLE_MAPS_API_KEY to your .env file to enable Google-style address suggestions. Manual address entry remains available below.':'You can still enter the address manually below.'}</span></div>}

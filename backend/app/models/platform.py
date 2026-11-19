@@ -77,7 +77,7 @@ class CarrierComplianceDocumentVersion(Base):
     stored_name: Mapped[str] = mapped_column(String(255))
     content_type: Mapped[str | None] = mapped_column(String(120))
     size_bytes: Mapped[int] = mapped_column(Integer, default=0)
-    uploaded_by: Mapped[str] = mapped_column(String(180), default='Valhalla Freight')
+    uploaded_by: Mapped[str] = mapped_column(String(180), default='Valhalla TMS')
     uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     is_current: Mapped[bool] = mapped_column(Boolean, default=True)
 
@@ -160,7 +160,7 @@ class CarrierActivity(Base):
     activity_type: Mapped[str] = mapped_column(String(40), default='note')
     subject: Mapped[str] = mapped_column(String(180))
     body: Mapped[str | None] = mapped_column(Text)
-    created_by: Mapped[str] = mapped_column(String(180), default='Valhalla Freight')
+    created_by: Mapped[str] = mapped_column(String(180), default='Valhalla TMS')
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 class CapacityLoad(Base):
@@ -263,7 +263,7 @@ class ShipmentDocument(Base):
     content_type: Mapped[str | None] = mapped_column(String(120))
     size_bytes: Mapped[int] = mapped_column(Integer, default=0)
     uploaded_by_role: Mapped[str] = mapped_column(String(30), default='broker')
-    uploaded_by: Mapped[str] = mapped_column(String(180), default='Valhalla Freight')
+    uploaded_by: Mapped[str] = mapped_column(String(180), default='Valhalla TMS')
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 
 class EmailOutbox(Base):

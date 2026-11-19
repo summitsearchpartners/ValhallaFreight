@@ -23,7 +23,7 @@ export default function ResetPassword(){
   }
   return <div className="loginPage resetPage"><section className="loginFormSide" style={{gridColumn:'1 / -1'}}>
     <form className="loginCard" onSubmit={submit}>
-      <div className="loginCardTop"><div className="loginLock"><LockKeyhole/></div><div><h2>Set a new password</h2><p>Valhalla Freight secure account recovery</p></div></div>
+      <div className="loginCardTop"><div className="loginLock"><LockKeyhole/></div><div><h2>Set a new password</h2><p>Valhalla TMS secure account recovery</p></div></div>
       {success?<><div className="loginSuccess" role="status">Password updated successfully.</div><Link className="resetBack" to="/login">Return to sign in</Link></>:<>
         {!token&&<div className="loginError">Reset link missing. Request a new link from the sign-in page.</div>}
         <label>New password<div className="loginInput"><LockKeyhole/><input type="password" autoComplete="new-password" minLength={12} maxLength={128} required value={password} onChange={e=>setPassword(e.target.value)}/></div></label>
@@ -32,6 +32,6 @@ export default function ResetPassword(){
         <button className="loginSubmit" disabled={!token||busy}>{busy?'Updating…':'Update password'}</button>
         <Link className="resetBack" to="/login">Back to sign in</Link>
       </>}
-      <div className="secureLine"><ShieldCheck/> Secure access to Valhalla Freight systems</div>
+      <div className="secureLine"><ShieldCheck/> Secure access to Valhalla TMS systems</div>
     </form><MusePoweredBy/></section></div>
 }

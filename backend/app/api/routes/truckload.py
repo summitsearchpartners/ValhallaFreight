@@ -184,7 +184,7 @@ def rate_confirmation(oid:int,user=Depends(brokers),db:Session=Depends(get_db)):
     from reportlab.pdfgen import canvas
     from reportlab.lib.utils import simpleSplit
     output=BytesIO();pdf=canvas.Canvas(output,pagesize=(612,792));y=750
-    lines=['VALHALLA FREIGHT · CARRIER RATE CONFIRMATION',f'Load FTL-{row.id} · Reference {row.reference}',f'Carrier: {db.get(Carrier,bid.carrier_id).name}',f'Equipment: {row.equipment} · Weight: {row.weight_lbs} lb · Packages: {row.packages}',f'Commodity: {row.commodity}',f'Agreed carrier rate: ${bid.carrier_cost:,.2f}','Tender acceptance must be confirmed directly with the carrier.','SAFE LOAD: Warehouse release requires approved driver, license photo, license scan and matching truck VIN.']
+    lines=['VALHALLA TMS · CARRIER RATE CONFIRMATION',f'Load FTL-{row.id} · Reference {row.reference}',f'Carrier: {db.get(Carrier,bid.carrier_id).name}',f'Equipment: {row.equipment} · Weight: {row.weight_lbs} lb · Packages: {row.packages}',f'Commodity: {row.commodity}',f'Agreed carrier rate: ${bid.carrier_cost:,.2f}','Tender acceptance must be confirmed directly with the carrier.','SAFE LOAD: Warehouse release requires approved driver, license photo, license scan and matching truck VIN.']
     for i,s in enumerate(row.stops):lines.append(f"STOP {i+1} {s['kind'].upper()}: {s['name']} · {s['address1']}, {s['city']} {s['state']} {s['postal_code']} · Facility local appointment {s['appointment_at']} · {s['contact']} {s['phone']}")
     for text in lines:
         for line in simpleSplit(text,'Helvetica',10,520):

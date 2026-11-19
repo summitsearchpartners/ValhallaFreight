@@ -59,9 +59,9 @@ def _send_reset_email(address: str, link: str) -> None:
     message = EmailMessage()
     message['From'] = settings.smtp_from_email
     message['To'] = address
-    message['Subject'] = 'Reset your Valhalla Freight password'
+    message['Subject'] = 'Reset your Valhalla TMS password'
     message.set_content(
-        'A password reset was requested for your Valhalla Freight account.\n\n'
+        'A password reset was requested for your Valhalla TMS account.\n\n'
         f'Open this link to set a new password (expires in 20 minutes):\n{link}\n\n'
         'If you did not request this, you can ignore this email.\n'
     )

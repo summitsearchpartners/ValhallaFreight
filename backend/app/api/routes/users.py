@@ -14,10 +14,10 @@ from app.services.user_activity import add_activity
 
 router=APIRouter(tags=['Account Administration'])
 Role=Literal['admin','manufacturer_admin','manufacturer','broker_admin','broker','customer','muse_admin','warehouse']
-ROLE_OPTIONS=[{'value':'admin','label':'Valhalla Freight Admin (Super User)'}, {'value':'manufacturer_admin','label':'Manufacturer Admin'}, {'value':'manufacturer','label':'Manufacturer'}, {'value':'broker_admin','label':'Broker Admin'}, {'value':'broker','label':'Broker'}, {'value':'customer','label':'Customer'}, {'value':'muse_admin','label':'Muse Freight Admin'}, {'value':'warehouse','label':'Warehouse (Safe Load Only)'}]
+ROLE_OPTIONS=[{'value':'admin','label':'Valhalla TMS Admin (Super User)'}, {'value':'manufacturer_admin','label':'Manufacturer Admin'}, {'value':'manufacturer','label':'Manufacturer'}, {'value':'broker_admin','label':'Broker Admin'}, {'value':'broker','label':'Broker'}, {'value':'customer','label':'Customer'}, {'value':'muse_admin','label':'Muse Freight Admin'}, {'value':'warehouse','label':'Warehouse (Safe Load Only)'}]
 
 def super_user(user=Depends(get_current_user)):
-    if user.role != 'admin': raise HTTPException(403,'Only Valhalla Freight Admin can manage accounts')
+    if user.role != 'admin': raise HTTPException(403,'Only Valhalla TMS Admin can manage accounts')
     return user
 
 class AccountIn(BaseModel):
@@ -129,7 +129,7 @@ def create(payload:AccountIn,db:Session=Depends(get_db),user=Depends(super_user)
 def protect_superuser(db,target,payload,user):
     removing_admin=target.role=='admin' and target.active and (payload is None or payload.role!='admin' or not payload.active)
     if target.id==user.id and (payload is None or payload.role!='admin' or not payload.active):raise HTTPException(409,'You cannot remove your own super-user access')
-    if removing_admin and db.query(User).filter(User.role=='admin',User.active.is_(True),User.id!=target.id).count()==0:raise HTTPException(409,'At least one active Valhalla Freight Admin must remain')
+    if removing_admin and db.query(User).filter(User.role=='admin',User.active.is_(True),User.id!=target.id).count()==0:raise HTTPException(409,'At least one active Valhalla TMS Admin must remain')
 
 @router.put('/admin/users/{user_id}')
 def update(user_id:int,payload:AccountIn,db:Session=Depends(get_db),user=Depends(super_user)):

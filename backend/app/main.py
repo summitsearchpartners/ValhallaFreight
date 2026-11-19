@@ -22,7 +22,7 @@ from app.domains.integrations import routes as integrations
 from app.domains.intelligence import routes as intelligence
 from app.domains.portal import routes as portal
 
-app = FastAPI(title=settings.app_name, version="0.19.26", description="Valhalla Freight Transportation Operating System")
+app = FastAPI(title=settings.app_name, version="0.19.28", description="Valhalla TMS Transportation Operating System")
 from app.services.user_activity import ActivityMiddleware
 from app.services.commercial_privacy import CommercialPrivacyMiddleware
 app.add_middleware(ActivityMiddleware)
@@ -43,7 +43,7 @@ def startup():
 
 @app.get("/health")
 def health():
-    return {"status":"ok","service":"Valhalla Freight API"}
+    return {"status":"ok","service":"Valhalla TMS API"}
 
 app.include_router(muse_partner.router, prefix="/api/v1")
 app.include_router(portal_administration.router, prefix="/api/v1")

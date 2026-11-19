@@ -195,7 +195,7 @@ class ActivityPayload(BaseModel):
     activity_type: str = "note"
     subject: str
     body: str | None = None
-    created_by: str = "Valhalla Freight"
+    created_by: str = "Valhalla TMS"
 
 
 def _carrier(db: Session, carrier_id: int) -> Carrier:
@@ -350,7 +350,7 @@ def create_carrier(payload: CarrierCreate, db: Session = Depends(get_db)):
         raise HTTPException(409, "A carrier with this SCAC already exists")
     db.add(CarrierProfile(carrier_id=carrier.id, mc_number=payload.mc_number, dot_number=payload.dot_number, authority_status=payload.authority_status, preferred=payload.preferred, legal_name=payload.name.strip(), onboarding_status="review"))
     db.add(CarrierServiceCapability(carrier_id=carrier.id, mode=payload.mode, service_level="Standard", active=True))
-    db.add(CarrierActivity(carrier_id=carrier.id, activity_type="system", subject="Carrier created", body="Carrier master record created in Valhalla Freight.", created_by="Valhalla Freight"))
+    db.add(CarrierActivity(carrier_id=carrier.id, activity_type="system", subject="Carrier created", body="Carrier master record created in Valhalla TMS.", created_by="Valhalla TMS"))
     db.commit()
     db.refresh(carrier)
     return {"id": carrier.id, "scac": carrier.scac, "name": carrier.name}
@@ -433,7 +433,7 @@ def update_carrier(carrier_id: int, payload: CarrierUpdate, db: Session = Depend
             setattr(c, key, value)
         else:
             setattr(p, key, value)
-    db.add(CarrierActivity(carrier_id=carrier_id, activity_type="update", subject="Carrier profile updated", body="Carrier master/profile information was updated.", created_by="Valhalla Freight"))
+    db.add(CarrierActivity(carrier_id=carrier_id, activity_type="update", subject="Carrier profile updated", body="Carrier master/profile information was updated.", created_by="Valhalla TMS"))
     try:
         db.commit()
     except IntegrityError:
@@ -447,7 +447,7 @@ def _create_child(db: Session, model, carrier_id: int, payload: BaseModel, subje
     row = model(carrier_id=carrier_id, **payload.model_dump())
     db.add(row)
     db.flush()
-    db.add(CarrierActivity(carrier_id=carrier_id, activity_type="update", subject=subject, body=f"{model.__name__} record added.", created_by="Valhalla Freight"))
+    db.add(CarrierActivity(carrier_id=carrier_id, activity_type="update", subject=subject, body=f"{model.__name__} record added.", created_by="Valhalla TMS"))
     db.commit()
     db.refresh(row)
     return row
@@ -564,7 +564,7 @@ async def upload_compliance_document(carrier_id: int, row_id: int, file: UploadF
     version = CarrierComplianceDocumentVersion(
         carrier_id=carrier_id, compliance_id=row_id, version_number=version_number,
         original_name=original_name, stored_name=stored_name, content_type=content_type or None,
-        size_bytes=len(content), uploaded_by="Valhalla Freight", uploaded_at=now, is_current=True,
+        size_bytes=len(content), uploaded_by="Valhalla TMS", uploaded_at=now, is_current=True,
     )
     db.add(version)
     compliance.document_name = original_name
@@ -577,7 +577,7 @@ async def upload_compliance_document(carrier_id: int, row_id: int, file: UploadF
         carrier_id=carrier_id, activity_type="compliance",
         subject=f"{compliance.item_type} document uploaded",
         body=f"Uploaded {original_name} as compliance document version {version_number}.",
-        created_by="Valhalla Freight",
+        created_by="Valhalla TMS",
     ))
     db.commit()
     return {"ok": True, "name": original_name, "size_bytes": len(content), "version": version_number}

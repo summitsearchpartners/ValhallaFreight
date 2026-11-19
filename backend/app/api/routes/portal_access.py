@@ -38,7 +38,7 @@ def setup(payload:VerifyIn,db:Session=Depends(get_db),user=Depends(super_user)):
     row=service.verify_identity(db,user,payload.password,payload.code)
     if row.totp_secret:raise HTTPException(409,'Authenticator is already enabled. Disable it before replacing the device.')
     secret=pyotp.random_base32();row.pending_secret=encrypt_secret_payload({'secret':secret});row.pending_expires_at=datetime.utcnow()+timedelta(minutes=10)
-    uri=pyotp.TOTP(secret).provisioning_uri(name=user.email,issuer_name='Valhalla Freight Admin')
+    uri=pyotp.TOTP(secret).provisioning_uri(name=user.email,issuer_name='Valhalla TMS Admin')
     output=io.BytesIO();qrcode.make(uri,image_factory=qrcode.image.svg.SvgPathImage).save(output)
     db.commit()
     return {'secret':secret,'provisioning_uri':uri,'qr_data':'data:image/svg+xml;base64,'+base64.b64encode(output.getvalue()).decode(),'expires_in':600}

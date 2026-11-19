@@ -26,7 +26,7 @@ export default function ManufacturerSupportWindow({children}:{children:ReactNode
   return()=>{active=false;clearInterval(timer);window.removeEventListener('manufacturer-support-expired',expired)};
  },[]);
  function returnToAdmin(){clearManufacturerSupport();window.location.assign('/admin/portal-access')}
- if(!ready)return <div className="supportAccessState"><ShieldCheck size={32}/><h1>{error?'Manufacturer verification required':'Opening manufacturer workspace…'}</h1><p>{error||'Preparing the company Command Center under your Valhalla Freight Admin identity.'}</p>{error&&<button className="btn primary" onClick={returnToAdmin}>Go to Portal Access</button>}</div>;
+ if(!ready)return <div className="supportAccessState"><ShieldCheck size={32}/><h1>{error?'Manufacturer verification required':'Opening manufacturer workspace…'}</h1><p>{error||'Preparing the company Command Center under your Valhalla TMS Admin identity.'}</p>{error&&<button className="btn primary" onClick={returnToAdmin}>Go to Portal Access</button>}</div>;
  return <>{children}</>;
 }
 
@@ -34,5 +34,5 @@ export function ManufacturerSupportBanner(){
  const session=manufacturerSupport();const [busy,setBusy]=useState(false),[error,setError]=useState('');
  if(!session)return null;
  async function end(close:boolean){setBusy(true);setError('');try{await api('/admin/portal-access/end',{method:'POST'});clearManufacturerSupport();if(close)window.close();window.location.assign('/admin/portal-access')}catch(e:any){setError(e.message)}finally{setBusy(false)}}
- return <div className="manufacturerSupportBanner"><div><b>Valhalla Freight Admin · Super User</b><span>Manufacturer workspace · {session.company_name} · {error||`Expires ${formatDateTime(session.expires_at.endsWith('Z')?session.expires_at:session.expires_at+'Z')}`}</span></div><div><button disabled={busy} onClick={()=>end(false)}>Switch portal</button><button disabled={busy} onClick={()=>end(true)}>{busy?'Ending…':'End support session'}</button></div></div>;
+ return <div className="manufacturerSupportBanner"><div><b>Valhalla TMS Admin · Super User</b><span>Manufacturer workspace · {session.company_name} · {error||`Expires ${formatDateTime(session.expires_at.endsWith('Z')?session.expires_at:session.expires_at+'Z')}`}</span></div><div><button disabled={busy} onClick={()=>end(false)}>Switch portal</button><button disabled={busy} onClick={()=>end(true)}>{busy?'Ending…':'End support session'}</button></div></div>;
 }

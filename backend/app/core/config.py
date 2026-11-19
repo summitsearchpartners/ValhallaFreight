@@ -1,7 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    app_name: str = "Valhalla Freight API"
+    app_name: str = "Valhalla TMS API"
     environment: str = "development"
     database_url: str = "postgresql+psycopg://valhalla_freight:valhalla_freight@db:5432/valhalla_freight"
     cors_origins: str = "http://localhost:5173"

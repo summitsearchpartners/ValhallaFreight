@@ -141,7 +141,7 @@ def _save_confirmed_location_if_new(db: Session, customer_id: int, address: dict
     db.add(loc); db.flush()
     inferred=[label for key,label in [('appointment_required','Appointment'),('liftgate_default','Liftgate'),('residential','Residential'),('limited_access','Limited Access')] if flags[key]]
     inference_text=', '.join(inferred) if inferred else 'No defaults detected from the shipment instructions/accessorials'
-    db.add(CustomerActivity(customer_id=customer_id,activity_type='location',subject='Shipment facility saved automatically',body=f'{name} was added to Customer 360 from an approved shipment. {inference_text}. Review the location defaults for future quotes.',created_by='Valhalla Freight'))
+    db.add(CustomerActivity(customer_id=customer_id,activity_type='location',subject='Shipment facility saved automatically',body=f'{name} was added to Customer 360 from an approved shipment. {inference_text}. Review the location defaults for future quotes.',created_by='Valhalla TMS'))
     db.add(OperationalNotification(audience='internal',notification_type='customer_location_review',severity='warning',customer_id=customer_id,location_id=loc.id,target_path=f'/customers/{customer_id}?tab=locations&location={loc.id}',title='Review new customer shipping location',body=f'{name} was saved from an approved shipment. {inference_text}. Review Appointment, Liftgate, Residential and Limited Access defaults in Customer 360 so future quotes auto-populate correctly.'))
     return loc.id
 
@@ -400,7 +400,7 @@ def add_tracking(shipment_id: int, payload: TrackingEventCreate, db: Session = D
 
 
 @router.post("/{shipment_id}/documents")
-async def upload_shipment_document(shipment_id:int, file:UploadFile=File(...), document_type:str=Form('Other'), uploaded_by_role:str=Form('broker'), uploaded_by:str=Form('Valhalla Freight'), db:Session=Depends(get_db)):
+async def upload_shipment_document(shipment_id:int, file:UploadFile=File(...), document_type:str=Form('Other'), uploaded_by_role:str=Form('broker'), uploaded_by:str=Form('Valhalla TMS'), db:Session=Depends(get_db)):
     if not db.get(Shipment,shipment_id): raise HTTPException(404,'Shipment not found')
     allowed={'application/pdf','image/jpeg','image/png','image/webp','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document'}
     content=await file.read()

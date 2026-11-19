@@ -35,7 +35,7 @@ export default function Login(){
     <section className="loginHero">
       <LoginBackdrop/>
       <div className="loginHeroInner">
-        <div className="loginBrand"><img src="/valhalla-freight-logo.png" alt="Valhalla Freight logo"/><div><strong>Valhalla Freight</strong><span>TRANSPORTATION MANAGEMENT SYSTEM</span></div></div>
+        <div className="loginBrand"><img src="/valhalla-tms-powered.webp" alt="Valhalla TMS logo"/><div><strong>Valhalla TMS</strong><span>TRANSPORTATION MANAGEMENT SYSTEM</span></div></div>
         <div className="heroCopy">
           <div className="loginBadge"><Truck size={13}/> {customerMode?'CUSTOMER FREIGHT PORTAL':'LTL TRANSPORTATION OPERATING SYSTEM'}</div>
           <h1>{customerMode?<>Your freight network.<br/><em>One clear view.</em></>:<>Move freight smarter.<br/>Command every <em>shipment.</em></>}</h1>
@@ -46,22 +46,22 @@ export default function Login(){
           <div><BarChart3/><span><b>Pricing & margin intelligence</b><small>Protect gross profit with customer, carrier, lane, class, and accessorial pricing rules.</small></span></div>
           <div><Route/><span><b>Built for the long haul</b><small>Structured freight data designed for integrations, automation, and scale.</small></span></div>
         </div>
-        <div className="heroFooter"><ShieldCheck/> Built for Valhalla Freight · Driven by Honor.</div>
+        <div className="heroFooter"><ShieldCheck/> Built for Valhalla TMS · Driven by Honor.</div>
       </div>
     </section>
     <section className="loginFormSide">
       <form className="loginCard" onSubmit={recovery?requestRecovery:submit}>
-        <div className="loginCardTop"><div className="loginLock"><LockKeyhole/></div><div><h2>{recovery?'Reset your password':customerMode?'Customer Portal Sign In':'Welcome back'}</h2><p>{recovery?'Enter the email address on your account to request a reset link.':customerMode?'Secure access to your Valhalla Freight customer workspace.':'Sign in to continue to your freight workspace.'}</p></div></div>
+        <div className="loginCardTop"><div className="loginLock"><LockKeyhole/></div><div><h2>{recovery?'Reset your password':customerMode?'Customer Portal Sign In':'Welcome back'}</h2><p>{recovery?'Enter the email address on your account to request a reset link.':customerMode?'Secure access to your Valhalla TMS customer workspace.':'Sign in to continue to your freight workspace.'}</p></div></div>
         <label>Email address<div className="loginInput"><Mail/><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@company.com" autoComplete="email" required/></div></label>
         {!recovery&&<label>Password <button type="button" className="forgot" onClick={()=>{setRecovery(true);setError('');setRecoveryMessage('')}}>Forgot password?</button><div className="loginInput"><LockKeyhole/><input type={showPassword?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Enter your password" autoComplete="current-password" required/><button type="button" className="showPass" onClick={()=>setShowPassword(x=>!x)} aria-label="Toggle password visibility">{showPassword?<EyeOff/>:<Eye/>}</button></div></label>}
         {recoveryMessage&&<div className="loginSuccess" role="status">{recoveryMessage}</div>}
         {error&&<div className="loginError">{error}</div>}
-        <button className="loginSubmit" disabled={submitting}>{submitting?'Please wait…':recovery?'Send reset link':customerMode?'Sign in to Customer Portal':'Sign in to Valhalla Freight'}<ArrowRight/></button>
+        <button className="loginSubmit" disabled={submitting}>{submitting?'Please wait…':recovery?'Send reset link':customerMode?'Sign in to Customer Portal':'Sign in to Valhalla TMS'}<ArrowRight/></button>
         {recovery&&<button type="button" className="resetBack" onClick={()=>{setRecovery(false);setRecoveryMessage('');setError('')}}>Back to sign in</button>}
-        <div className="secureLine"><ShieldCheck/> Secure access to Valhalla Freight systems</div>
+        <div className="secureLine"><ShieldCheck/> Secure access to Valhalla TMS systems</div>
       </form>
       <MusePoweredBy/>
-      <div className="loginMeta">VALHALLA FREIGHT <i/> TRANSPORTATION MANAGEMENT SYSTEM <i/> BUILT FOR THE LONG HAUL</div>
+      <div className="loginMeta">VALHALLA TMS <i/> TRANSPORTATION MANAGEMENT SYSTEM <i/> BUILT FOR THE LONG HAUL</div>
     </section>
   </div>
 }

@@ -96,7 +96,7 @@ def audit(db, action: str, details: dict, entity_id: str='DAFG'):
     if user:
         from app.services.user_activity import add_activity
         add_activity(db,user,action,details={'entity_id':entity_id})
-    db.add(AuditEvent(entity_type='integration',entity_id=entity_id,action=action,actor='Valhalla Freight',details=safe))
+    db.add(AuditEvent(entity_type='integration',entity_id=entity_id,action=action,actor='Valhalla TMS',details=safe))
     db.commit()
 
 

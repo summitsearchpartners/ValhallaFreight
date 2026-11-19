@@ -168,7 +168,7 @@ def update_margin_protection(db: Session, customer_id: int, payload: MarginProte
         customer_id=customer_id, activity_type='margin_protection',
         subject='Margin protection policy updated',
         body=f'Carrier invoice variance threshold set to ${payload.threshold:.2f}. Internal notifications: {"on" if payload.internal_notify else "off"}; customer notifications: {"on" if payload.customer_notify else "off"}.',
-        created_by='Valhalla Freight'
+        created_by='Valhalla TMS'
     ))
     db.commit(); db.refresh(profile)
     return {

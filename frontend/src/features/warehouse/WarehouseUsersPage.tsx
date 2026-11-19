@@ -28,7 +28,7 @@ export default function WarehouseUsersPage(){
  }catch(err:any){setError(err.message)}finally{setBusy(false)}}
  return <main style={{maxWidth:1050,margin:'24px auto',padding:24}}>
   <h1>Warehouse Users</h1>
-  <p>Create Safe Load-only accounts for warehouse employees. These users cannot sign in to the Valhalla Freight manufacturer portal.</p>
+  <p>Create Safe Load-only accounts for warehouse employees. These users cannot sign in to the Valhalla TMS manufacturer portal.</p>
   {isSuper&&<label>Manufacturer company <select value={companyId??''} onChange={e=>setCompanyId(e.target.value?Number(e.target.value):undefined)}><option value="">Select manufacturer</option>{companies.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>}
   {!companyId?<p>Select a manufacturer to manage its warehouse employees.</p>:<>
    <h2>{editing===null?'Create Warehouse Account':'Edit Warehouse Account'}</h2>

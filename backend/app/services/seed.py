@@ -8,7 +8,7 @@ def seed(db: Session):
     if not db.query(User).filter(User.role == 'admin', User.active.is_(True)).first():
         db.add(User(
             email=settings.default_admin_email.lower(),
-            full_name="Valhalla Freight Administrator",
+            full_name="Valhalla TMS Administrator",
             password_hash=hash_password(settings.default_admin_password),
             role="admin",
             active=True,
@@ -66,7 +66,7 @@ def seed_customer_360(db: Session):
             for first,last,title,email,role,primary in contacts:
                 db.add(CustomerContact(customer_id=customer.id,first_name=first,last_name=last,title=title,email=email,role=role,primary=primary,billing_contact=(role=="billing"),quote_contact=(role=="operations")))
         if db.query(CustomerActivity).filter(CustomerActivity.customer_id==customer.id).count()==0:
-            db.add(CustomerActivity(customer_id=customer.id,activity_type="system",subject="Customer 360 profile initialized",body="Account profile, locations and contacts are ready for operational use.",created_by="Valhalla Freight"))
+            db.add(CustomerActivity(customer_id=customer.id,activity_type="system",subject="Customer 360 profile initialized",body="Account profile, locations and contacts are ready for operational use.",created_by="Valhalla TMS"))
     db.commit()
 
 
@@ -149,7 +149,7 @@ def seed_platform_expansion(db: Session):
             db.add(CarrierDocument(carrier_id=c.id,document_type='W-9',name=f'{c.scac} W-9',status='current'))
             db.add(CarrierDocument(carrier_id=c.id,document_type='Certificate of Insurance',name=f'{c.scac} COI',expires_at=date.today()+timedelta(days=180),status='current'))
         if db.query(CarrierActivity).filter(CarrierActivity.carrier_id==c.id).count()==0:
-            db.add(CarrierActivity(carrier_id=c.id,activity_type='system',subject='Carrier 360 initialized',body='Compliance, service capabilities, strategic lanes, contract and document records initialized.',created_by='Valhalla Freight'))
+            db.add(CarrierActivity(carrier_id=c.id,activity_type='system',subject='Carrier 360 initialized',body='Compliance, service capabilities, strategic lanes, contract and document records initialized.',created_by='Valhalla TMS'))
     providers={
       'Carrier Connectivity':['CarrierDetails','Shipify','PC*Miler'],
       'Rate Intelligence':['Truckstop','DAT','FreightWaves SONAR','Cargo Chief','Triumph'],
