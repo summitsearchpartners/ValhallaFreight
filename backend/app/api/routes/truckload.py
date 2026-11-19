@@ -58,7 +58,7 @@ class OrderIn(BaseModel):
     notes:str=Field(default='',max_length=4000)
     @model_validator(mode='after')
     def valid(self):
-        if self.equipment not in {'Dry van','Reefer','Flatbed','Step deck','Power only','Box truck'}:raise ValueError('Choose supported equipment')
+        if self.equipment not in {'Dry van','Reefer','Flatbed','Step deck','Conestoga','Intermodal','Partial','Power only','Box truck'}:raise ValueError('Choose supported equipment')
         if any(stop.kind=='pickup' for stop in self.stops[1:]):raise ValueError('Safe Load currently supports one pickup per shipment. Create a separate shipment for each additional warehouse pickup.')
         if self.stops[0].kind!='pickup' or self.stops[-1].kind!='delivery':raise ValueError('Begin with pickup and end with delivery')
         if any(b.appointment_at<a.appointment_at for a,b in zip(self.stops,self.stops[1:])):raise ValueError('Stop appointments must be in route order')
