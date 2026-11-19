@@ -246,6 +246,70 @@ def _address_anchored_name_fallback(source):
     return {'DCS':last,'DAC':first}
 
 
+def _front_name_components(source):
+    """Extract separately printed surname, given/middle names and suffix.
+
+    Supports AAMVA 1/2/3 card layouts, including OCR-damaged numeric labels.
+    Requires an adjacent name pair and a printed address or a numbered name
+    anchor. Never fills an identity from the shipment assignment.
+    """
+    lines=[re.sub(r"\s+", " ", line.upper()).strip() for line in source.splitlines()]
+    lines=[line for line in lines if line]
+    excluded={'NONE','CLASS','RESTR','ENDOR','DRIVER','LICENSE','OKLAHOMA','EXP','ISS','DOB','SEX','EYES','HAZ','HEIGHT','WEIGHT','USA','DATE'}
+    def clean(line):
+        # Small AAMVA field numbers are frequently recognized as stray punctuation.
+        line=re.sub(r"^(?:[123]\s*[.:;|]\s*|[.:;|=<>~-]+\s*)", "", line).strip(" ,.-:;|=<>~")
+        if not re.fullmatch(r"[A-Z][A-Z ,.'-]{1,55}",line):return ''
+        if any(part in excluded for part in line.replace(',',' ').split()):return ''
+        return re.sub(r"\s+", " ",line)
+    candidates=set()
+    for i in range(len(lines)-1):
+        if re.match(r"^[23]\s*[.:;|]",lines[i]):continue
+        surname=clean(lines[i]);given=clean(lines[i+1])
+        if not surname or not given:continue
+        if len(surname.split())>4 or len(given.split())>5:continue
+        before=lines[max(0,i-5):i]
+        after=lines[i+2:i+5]
+        has_address=any(re.match(r"^8\s*[A-Z]?\s*[.:]?\s*\d{1,6}\s+[A-Z]",v) for v in after)
+        has_numbers=bool(re.match(r"^1\s*[.:;|]",lines[i]) and re.match(r"^2\s*[.:;|]",lines[i+1]))
+        has_dob=any(re.search(r"\b(?:DOB|BIRTH)\b",v) for v in before)
+        if not (has_address or has_numbers or (has_dob and any('ADDRESS' in v for v in after))):continue
+        # Optional line 3 is the separately printed middle name or suffix.
+        extra=''
+        if i+2<len(lines) and re.match(r"^3\s*[.:;|]",lines[i+2]):extra=clean(lines[i+2])
+        candidates.add((surname,given,extra))
+    if len(candidates)!=1:return {'DCS':'','DAC':'','DAD':''}
+    surname,given,extra=candidates.pop()
+    # A suffix such as JR, SR, II or III remains attached to the given name
+    # when printed there. A distinct 3 field is the AAMVA middle name.
+    return {'DCS':surname,'DAC':given,'DAD':extra}
+
+
+def _expiration_anchored(source):
+    """Only recognize dates explicitly paired with an EXP/4b expiration label."""
+    dates=set()
+    for line in source.upper().splitlines():
+        line=re.sub(r"\s+", " ",line)
+        # 4b EXP 03/31/2030, 4bEXP 03/31/2030, and EXP: 03/31/2030.
+        for m in re.finditer(r"(?:\b4\s*[B8]\s*[.:]?\s*(?:EXP)?|\bEXP(?:IRATION|IRES)?\b)\s*[:.=-]?\s*(\d{2}[/.-]\d{2}[/.-]\d{4})",line):
+            try:
+                value=datetime.strptime(m.group(1).replace('.','/').replace('-','/'),'%m/%d/%Y')
+                if 2000<=value.year<=2100:dates.add(value.strftime('%m%d%Y'))
+            except ValueError:pass
+    return next(iter(dates)) if len(dates)==1 else ''
+
+
+def _supplement_front(candidate,recognized):
+    """Fill missing OCR fields, preserving previously read values."""
+    for supplemental in (parse_license_text(recognized),_front_card_fallback(recognized),
+                         _name_region_fallback(recognized),_address_anchored_name_fallback(recognized),
+                         _front_name_components(recognized)):
+        for key,value in supplemental.items():
+            if value and not candidate.get(key):candidate[key]=value
+    if not candidate.get('DBA'):candidate['DBA']=_expiration_anchored(recognized)
+    return candidate
+
+
 def _targeted_front_regions(raw):
     """Focused reads of name and date regions, avoiding a full OCR sweep.
 
@@ -270,12 +334,12 @@ def _targeted_front_regions(raw):
 
 def _merge_license_observations(first,second):
     """Only supplement missing fields when observations do not conflict."""
-    return {key:(first.get(key) or second.get(key) or '') for key in ('DAQ','DAJ','DAC','DCS','DBA')}
+    return {key:(first.get(key) or second.get(key) or '') for key in ('DAQ','DAJ','DAC','DCS','DAD','DBA')}
 
 
 def _merge_front_fields(primary,secondary):
     """Conservative fill: never replace an already-read conflicting value."""
-    return {key:(primary.get(key) or secondary.get(key,'') or '') for key in ('DAQ','DAJ','DAC','DCS','DBA')}
+    return {key:(primary.get(key) or secondary.get(key,'') or '') for key in ('DAQ','DAJ','DAC','DCS','DAD','DBA')}
 
 def rotated(raw,angle):
     if angle==0:return raw
@@ -302,10 +366,7 @@ def _ocr_license_candidates(raw):
         if remaining<1:break
         try:recognized=text(prepared,11,timeout=min(5,max(1,int(remaining))))
         except ValueError:continue
-        parsed=parse_license_text(recognized)
-        candidate=_merge_front_fields(parsed,_front_card_fallback(recognized))
-        candidate=_merge_license_observations(candidate,_name_region_fallback(recognized))
-        candidate=_merge_license_observations(candidate,_address_anchored_name_fallback(recognized))
+        candidate=_supplement_front({},recognized)
         # PSM 11 can fragment numbered names. A single PSM 6 pass is a
         # bounded fallback, not a full multi-enhancement OCR sweep.
         if (not candidate.get('DAC') or not candidate.get('DCS') or not candidate.get('DBA')) and angle==0:
@@ -313,10 +374,7 @@ def _ocr_license_candidates(raw):
             if remaining>=2:
                 try:
                     alternate=text(prepared,6,timeout=min(4,max(1,int(remaining))))
-                    other=_merge_front_fields(parse_license_text(alternate),_front_card_fallback(alternate))
-                    other=_merge_license_observations(other,_name_region_fallback(alternate))
-                    other=_merge_license_observations(other,_address_anchored_name_fallback(alternate))
-                    candidate=_merge_license_observations(candidate,other)
+                    candidate=_supplement_front(candidate,alternate)
                 except ValueError:pass
         # One targeted region pass on upright, incomplete front-card reads.
         # Stay inside the existing global deadline; no remote OCR service.
@@ -326,10 +384,7 @@ def _ocr_license_candidates(raw):
                 if remaining<2:break
                 try:region_text=text(region,6,timeout=min(3,max(1,int(remaining))))
                 except ValueError:continue
-                supplemental=_merge_front_fields(parse_license_text(region_text),_front_card_fallback(region_text))
-                supplemental=_merge_license_observations(supplemental,_name_region_fallback(region_text))
-                supplemental=_merge_license_observations(supplemental,_address_anchored_name_fallback(region_text))
-                candidate=_merge_license_observations(candidate,supplemental)
+                candidate=_supplement_front(candidate,region_text)
                 if candidate.get('DAC') and candidate.get('DCS') and candidate.get('DBA'):break
         score=sum(2 if candidate.get(k) else 0 for k in ('DAQ','DAC','DCS','DBA'))+int(bool(candidate.get('DAJ')))
         if score>best_score:best,best_angle,best_score=candidate,angle,score
