@@ -219,6 +219,55 @@ def _name_region_fallback(source):
     return {key:next(iter(values)) if len(values)==1 else '' for key,values in found.items()}
 
 
+def _address_anchored_name_fallback(source):
+    """Recover a two-line name immediately above a labelled street address.
+
+    The layout anchor prevents mistaking random uppercase card text for a name.
+    This is deliberately conservative: no guess if multiple name pairs qualify.
+    """
+    lines=[re.sub(r'\s+',' ',v.upper()).strip(' .:;|') for v in source.splitlines()]
+    lines=[v for v in lines if v]
+    choices=set()
+    excluded={'NONE','CLASS','RESTR','ENDOR','DRIVER','LICENSE','OKLAHOMA','EXP','ISS','DOB','SEX','EYES','HAZ','HEIGHT','WEIGHT','USA'}
+    def clean_name(value):
+        value=re.sub(r'^(?:[12]\s*[.:]?\s*)','',value).strip(' ,.-')
+        if not re.fullmatch(r"[A-Z][A-Z ,.'-]{1,45}",value):return ''
+        if any(token in excluded for token in value.replace(',',' ').split()):return ''
+        return value
+    for i,line in enumerate(lines):
+        # The next line must be the printed street address (8/8a is AAMVA address).
+        if not re.match(r'^(?:8\s*[A-Z]?\s*[.:]?\s*)?\d{1,6}\s+[A-Z]',line):continue
+        if i<2:continue
+        last=clean_name(lines[i-2]);first=clean_name(lines[i-1])
+        if last and first and len(last.split())<=3 and len(first.split())<=4:
+            choices.add((last,first))
+    if len(choices)!=1:return {'DCS':'','DAC':''}
+    last,first=choices.pop()
+    return {'DCS':last,'DAC':first}
+
+
+def _targeted_front_regions(raw):
+    """Focused reads of name and date regions, avoiding a full OCR sweep.
+
+    Regions are layout hints, not an identity assertion; the existing anchored
+    parsers must still validate the OCR output. Only used for upright cards.
+    """
+    im=ImageOps.exif_transpose(Image.open(io.BytesIO(raw))).convert('L')
+    w,h=im.size
+    if w<400 or h<220 or w<h:return []
+    # Common horizontal US ID: name/address middle-left, DL/expiry top-right.
+    regions=[(int(.30*w),int(.34*h),int(.91*w),int(.79*h)),
+             (int(.37*w),int(.08*h),int(.97*w),int(.40*h))]
+    prepared=[]
+    for bounds in regions:
+        crop=ImageOps.autocontrast(im.crop(bounds),cutoff=1)
+        if crop.width<1400:
+            factor=min(2.0,1400/max(crop.width,1))
+            crop=crop.resize((int(crop.width*factor),int(crop.height*factor)),Image.Resampling.LANCZOS)
+        out=io.BytesIO();crop.save(out,'PNG');prepared.append(out.getvalue())
+    return prepared
+
+
 def _merge_license_observations(first,second):
     """Only supplement missing fields when observations do not conflict."""
     return {key:(first.get(key) or second.get(key) or '') for key in ('DAQ','DAJ','DAC','DCS','DBA')}
@@ -256,6 +305,7 @@ def _ocr_license_candidates(raw):
         parsed=parse_license_text(recognized)
         candidate=_merge_front_fields(parsed,_front_card_fallback(recognized))
         candidate=_merge_license_observations(candidate,_name_region_fallback(recognized))
+        candidate=_merge_license_observations(candidate,_address_anchored_name_fallback(recognized))
         # PSM 11 can fragment numbered names. A single PSM 6 pass is a
         # bounded fallback, not a full multi-enhancement OCR sweep.
         if (not candidate.get('DAC') or not candidate.get('DCS') or not candidate.get('DBA')) and angle==0:
@@ -265,8 +315,22 @@ def _ocr_license_candidates(raw):
                     alternate=text(prepared,6,timeout=min(4,max(1,int(remaining))))
                     other=_merge_front_fields(parse_license_text(alternate),_front_card_fallback(alternate))
                     other=_merge_license_observations(other,_name_region_fallback(alternate))
+                    other=_merge_license_observations(other,_address_anchored_name_fallback(alternate))
                     candidate=_merge_license_observations(candidate,other)
                 except ValueError:pass
+        # One targeted region pass on upright, incomplete front-card reads.
+        # Stay inside the existing global deadline; no remote OCR service.
+        if angle==0 and (not candidate.get('DAC') or not candidate.get('DCS') or not candidate.get('DBA')):
+            for region in _targeted_front_regions(raw):
+                remaining=deadline-time.monotonic()
+                if remaining<2:break
+                try:region_text=text(region,6,timeout=min(3,max(1,int(remaining))))
+                except ValueError:continue
+                supplemental=_merge_front_fields(parse_license_text(region_text),_front_card_fallback(region_text))
+                supplemental=_merge_license_observations(supplemental,_name_region_fallback(region_text))
+                supplemental=_merge_license_observations(supplemental,_address_anchored_name_fallback(region_text))
+                candidate=_merge_license_observations(candidate,supplemental)
+                if candidate.get('DAC') and candidate.get('DCS') and candidate.get('DBA'):break
         score=sum(2 if candidate.get(k) else 0 for k in ('DAQ','DAC','DCS','DBA'))+int(bool(candidate.get('DAJ')))
         if score>best_score:best,best_angle,best_score=candidate,angle,score
         if all(candidate.get(k) for k in ('DAQ','DAC','DCS','DBA','DAJ')):break
