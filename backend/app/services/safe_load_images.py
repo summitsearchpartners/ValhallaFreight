@@ -299,14 +299,63 @@ def _expiration_anchored(source):
     return next(iter(dates)) if len(dates)==1 else ''
 
 
+def _numbered_name_pair(source):
+    """Recover AAMVA 1 surname / 2 given-name lines despite noisy OCR labels.
+
+    Requires both separately numbered fields. Never infer names from a lone
+    unlabelled line, a document holder, or a dispatcher-supplied identity.
+    """
+    lines=[re.sub(r"\s+", " ", line.upper()).strip() for line in source.splitlines()]
+    lines=[line for line in lines if line]
+    fields={'DCS':set(),'DAC':set(),'DAD':set()}
+    excluded={'NONE','RESTR','CLASS','ISS','EXP','DOB','DRIVER','LICENSE','OKLAHOMA','SEX','EYES'}
+    def parse(value):
+        value=re.split(r"\s+(?:[348]\s*[A-D]?\s*[.:]|DOB|EXP|ISS)\b",value,maxsplit=1)[0]
+        value=value.strip(' ,.;:|')
+        if not re.fullmatch(r"[A-Z][A-Z ,.'-]{1,65}",value):return ''
+        if any(token in excluded for token in value.replace(',',' ').split()):return ''
+        return value
+    for i,line in enumerate(lines):
+        m=re.search(r"(?:^|\s)[1I]\s*[.:;|]?\s+([A-Z][A-Z ,.'-]{1,65})",line)
+        if not m:continue
+        last=parse(m.group(1))
+        if not last:continue
+        following=lines[i+1:i+3]
+        # OCR often renders the printed 2 as a 7, Z or punctuation.
+        for nxt in following:
+            g=re.match(r"^[2Z7]\s*[.:;|]\s*([A-Z][A-Z ,.'-]{1,65})$",nxt)
+            if not g:continue
+            given=parse(g.group(1))
+            if given:
+                fields['DCS'].add(last);fields['DAC'].add(given)
+            break
+    return {key:next(iter(values)) if len(values)==1 else '' for key,values in fields.items()}
+
+
+def _expiry_label_date(source):
+    """Read explicitly labelled expiration dates, including OCR spacing noise."""
+    values=set()
+    for line in source.upper().splitlines():
+        line=re.sub(r"\s+", " ", line)
+        # Date must follow the printed expiration label, not DOB or issue date.
+        for m in re.finditer(r"(?:\b4\s*[B8]\s*[.:]?\s*(?:EXP)?|\bEXP(?:IRATION|IRES)?\b)\s*[:.=-]?\s*([0-9OIl]{1,2}\s*[/.-]\s*[0-9OIl]{1,2}\s*[/.-]\s*[0-9OIl]{4})",line):
+            raw=m.group(1).replace('O','0').replace('I','1').replace('L','1')
+            raw=re.sub(r'\s+','',raw).replace('.','/').replace('-','/')
+            try:
+                dt=datetime.strptime(raw,'%m/%d/%Y')
+                if 2000<=dt.year<=2100:values.add(dt.strftime('%m%d%Y'))
+            except ValueError:pass
+    return next(iter(values)) if len(values)==1 else ''
+
+
 def _supplement_front(candidate,recognized):
     """Fill missing OCR fields, preserving previously read values."""
     for supplemental in (parse_license_text(recognized),_front_card_fallback(recognized),
                          _name_region_fallback(recognized),_address_anchored_name_fallback(recognized),
-                         _front_name_components(recognized)):
+                         _front_name_components(recognized),_numbered_name_pair(recognized)):
         for key,value in supplemental.items():
             if value and not candidate.get(key):candidate[key]=value
-    if not candidate.get('DBA'):candidate['DBA']=_expiration_anchored(recognized)
+    if not candidate.get('DBA'):candidate['DBA']=_expiry_label_date(recognized) or _expiration_anchored(recognized)
     return candidate
 
 
