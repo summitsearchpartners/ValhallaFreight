@@ -37,12 +37,12 @@ def _tesseract_executable():
     return next((p for p in choices if p and os.path.isfile(p)), None)
 
 
-def text(raw,psm=6):
+def text(raw,psm=6,timeout=12):
     executable = _tesseract_executable()
     if not executable:
         raise ValueError('Local Tesseract OCR is not installed or discoverable. Install Tesseract OCR with English language data or set SAFE_LOAD_TESSERACT_PATH. Freight remains held for broker review.')
     try:
-        result=subprocess.run([executable,'stdin','stdout','-l','eng','--psm',str(psm)],input=raw,capture_output=True,timeout=12,check=True)
+        result=subprocess.run([executable,'stdin','stdout','-l','eng','--psm',str(psm)],input=raw,capture_output=True,timeout=timeout,check=True)
         return result.stdout.decode('utf-8',errors='replace').upper()
     except (OSError,subprocess.SubprocessError) as exc:
         logging.getLogger(__name__).warning('Local Tesseract OCR failed: %s',exc)
@@ -154,18 +154,36 @@ def rotated(raw,angle):
     output=io.BytesIO();Image.open(io.BytesIO(raw)).rotate(angle,expand=True).save(output,'PNG');return output.getvalue()
 
 def _license_ocr_variants(raw):
-    """Try orientation and contrast, retaining the original evidence unchanged."""
+    """One inexpensive OCR image per orientation; no repeated contrast/PSM sweep."""
     original=ImageOps.exif_transpose(Image.open(io.BytesIO(raw))).convert('L')
     for angle in (0,90,270,180):
         oriented=original.rotate(angle,expand=True)
-        scale=min(3,max(1,2000/max(oriented.width,1)))
-        if scale>1:
-            oriented=oriented.resize((round(oriented.width*scale),round(oriented.height*scale)),Image.Resampling.LANCZOS)
-        contrast=ImageOps.autocontrast(oriented)
-        for variant in (contrast,ImageOps.autocontrast(contrast,cutoff=2)):
-            output=io.BytesIO();variant.save(output,'PNG')
-            yield angle,output.getvalue()
+        # Avoid huge images and expensive upscaling; 1600px is enough for most cards.
+        oriented.thumbnail((1800,1800))
+        prepared=ImageOps.autocontrast(oriented,cutoff=1)
+        output=io.BytesIO();prepared.save(output,'PNG')
+        yield angle,output.getvalue()
 
+
+def _ocr_license_candidates(raw):
+    """Bound OCR latency; only use values actually recognized in the image."""
+    observed={key:set() for key in ('DAQ','DAJ','DAC','DCS','DBA')}
+    deadline=time.monotonic()+16
+    for angle,prepared in _license_ocr_variants(raw):
+        if time.monotonic()>=deadline:break
+        try:
+            # Sparse text mode handles many front-card layouts better than block mode.
+            candidate=parse_license_text(text(prepared,11,timeout=min(5,max(1,int(deadline-time.monotonic())))))
+        except ValueError:continue
+        for key,value in candidate.items():
+            if value:observed[key].add(value)
+        # A full unambiguous set needs no further OCR work.
+        if all(len(values)==1 for values in observed.values()):break
+    numbers=observed['DAQ']
+    if len(numbers)>1:
+        longest=sorted(numbers,key=len,reverse=True)[0]
+        if all(longest.startswith(item) for item in numbers):observed['DAQ']={longest}
+    return {key:next(iter(values)) if len(values)==1 else '' for key,values in observed.items()}
 
 def license_evidence(raw):
     from app.services.safe_load import decode_license
@@ -177,32 +195,10 @@ def license_evidence(raw):
         if any(c!=codes[0] for c in codes):return {'fields':{},'source':'pdf417','errors':['Multiple different licenses found in the photo']}
         best=codes[0];source='pdf417'
     else:
-        source='local_ocr';best={};deadline=time.monotonic()+55
-        # OCR is mandatory for a front-only ID. Never fabricate identity fields,
-        # and never turn an unreadable document into an automatic release.
+        source='local_ocr';best={}
         if not _tesseract_executable():
             return {'fields':{},'source':source,'errors':['Local Tesseract OCR is missing. Install the offline OCR engine and English language data; freight remains held for broker review.']}
-        observed={key:set() for key in ('DAQ','DAJ','DAC','DCS','DBA')}
-        for angle,prepared in _license_ocr_variants(raw):
-            if time.monotonic()>deadline:break
-            for psm in (11,6,3):
-                if time.monotonic()>deadline:break
-                try:candidate=parse_license_text(text(prepared,psm))
-                except ValueError:continue
-                for key,value in candidate.items():
-                    if value:observed[key].add(value)
-                # Do not stop on the first complete-looking OCR result: a truncated
-                # DAQ such as TEST must not suppress a later TEST1234 reading.
-            if time.monotonic()>deadline:break
-        # A strict prefix may be a truncated read of the same printed value.
-        # Only prefer a longer reading when the short read is its exact prefix;
-        # unrelated conflicting license numbers remain ambiguous and blocked.
-        numbers=observed['DAQ']
-        if len(numbers)>1:
-            longest=sorted(numbers,key=len,reverse=True)[0]
-            if all(longest.startswith(item) for item in numbers):
-                observed['DAQ']={longest}
-        best={key:next(iter(values)) if len(values)==1 else '' for key,values in observed.items()}
+        best=_ocr_license_candidates(raw)
     labels={'DAQ':'License number','DAJ':'Issuing state','DAC':'First name','DCS':'Last name','DBA':'Expiration date'}
     errors=[name+' could not be read unambiguously from the onsite ID photo' for k,name in labels.items() if not best.get(k)]
     return {'fields':best,'source':source,'errors':errors}
