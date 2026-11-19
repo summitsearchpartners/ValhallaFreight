@@ -412,55 +412,88 @@ def _license_ocr_variants(raw):
         yield angle,output.getvalue()
 
 
-def _neural_license_candidates(raw, deadline_seconds=14):
-    """Offline RapidOCR ONNX front-card recognition, independent of Tesseract.
+def _neural_lines(engine, image):
+    """Read text in geometric order; do not concatenate unrelated card columns."""
+    import numpy as np
+    result, _ = engine(np.asarray(image)[:, :, ::-1].copy())
+    lines = []
+    for item in result or []:
+        try:
+            box, value, confidence = item
+            if float(confidence) < .55:
+                continue
+            x = min(float(point[0]) for point in box)
+            y = sum(float(point[1]) for point in box) / len(box)
+            height = max(float(point[1]) for point in box) - min(float(point[1]) for point in box)
+            lines.append((y, x, max(8, height), str(value).upper()))
+        except (ValueError, TypeError, IndexError, KeyError, ZeroDivisionError):
+            continue
+    lines.sort(key=lambda item: (item[0], item[1]))
+    rows = []
+    for y, x, height, value in lines:
+        # Group using text height rather than a fixed fraction of the image;
+        # fixed thresholds joined unrelated printed name/address lines.
+        if rows and abs(y - rows[-1][0]) <= max(5, min(height, rows[-1][2]) * .38):
+            rows[-1][1].append((x, value))
+        else:
+            rows.append([y, [(x, value)], height])
+    return "\n".join(" ".join(v for _, v in sorted(parts)) for _, parts, _ in rows)
 
-    Use the same packaged CPU neural models as the VIN reader. Only extract
-    fields supported by explicit printed labels; never compare to assigned
-    driver details when extracting or silently authorize a shipment.
+
+def _neural_license_candidates(raw, deadline_seconds=14):
+    """Offline neural OCR with a high-resolution name-region retry.
+
+    Barcode PDF417 remains authoritative. A targeted crop can improve small
+    printed names, but conflicting name readings are never silently selected.
     """
     import numpy as np
     from app.services.safe_load_vin_neural import _local_engine, _lock
-    start=time.monotonic()
-    image=ImageOps.exif_transpose(Image.open(io.BytesIO(raw))).convert('RGB')
-    image.thumbnail((2200,2200))
-    observations=[]
-    # Rotate only when necessary; preserve a time budget for normal requests.
-    variants=[(0,image),(180,image.rotate(180,expand=True)),
-              (90,image.rotate(90,expand=True)),(270,image.rotate(270,expand=True))]
-    for angle,variant in variants:
-        if time.monotonic()-start>deadline_seconds:break
+    start = time.monotonic()
+    image = ImageOps.exif_transpose(Image.open(io.BytesIO(raw))).convert('RGB')
+    image.thumbnail((2200, 2200))
+    observations = []
+    for angle in (0, 180, 90, 270):
+        if time.monotonic() - start > deadline_seconds:
+            break
+        variant = image.rotate(angle, expand=True) if angle else image
         try:
             with _lock:
-                engine=_local_engine()
-                result,_=engine(np.asarray(variant)[:,:,::-1].copy())
+                recognized = _neural_lines(_local_engine(), variant)
         except Exception as exc:
-            logging.getLogger(__name__).warning('Local neural license OCR unavailable: %s',type(exc).__name__)
+            logging.getLogger(__name__).warning('Local neural license OCR unavailable: %s', type(exc).__name__)
             break
-        lines=[]
-        for item in result or []:
-            try:
-                box,value,confidence=item
-                if float(confidence)<0.48:continue
-                y=sum(float(point[1]) for point in box)/len(box)
-                x=min(float(point[0]) for point in box)
-                lines.append((y,x,str(value).upper()))
-            except (ValueError,TypeError,IndexError,KeyError,ZeroDivisionError):continue
-        lines.sort(key=lambda item:(item[0],item[1]))
-        rows=[]
-        for y,x,value in lines:
-            if rows and abs(y-rows[-1][0])<=max(9,variant.height*.012):
-                rows[-1][1].append((x,value))
-            else:
-                rows.append([y,[(x,value)]])
-        recognized='\n'.join(' '.join(value for _,value in sorted(parts)) for _,parts in rows)
-        candidate=_supplement_front({},recognized)
-        score=sum(2 if candidate.get(key) else 0 for key in ('DAQ','DAC','DCS','DBA'))+bool(candidate.get('DAJ'))
-        observations.append((score,angle,candidate))
-        if all(candidate.get(key) for key in ('DAQ','DAC','DCS','DBA','DAJ')):break
-    if not observations:return {},0
-    _,angle,best=max(observations,key=lambda item:item[0])
-    return best,angle
+        candidate = _supplement_front({}, recognized)
+        # The OCR engine's name result may have small-letter errors even when
+        # other fields are complete. Re-read the printed name area at native
+        # detail, but never invent a corrected identity from the shipment.
+        if angle == 0 and variant.width > variant.height and time.monotonic() - start < deadline_seconds:
+            w, h = variant.size
+            for bounds in ((int(.24*w), int(.27*h), int(.97*w), int(.80*h)),):
+                crop = variant.crop(bounds)
+                if crop.width < 1400:
+                    scale = min(2.5, 1400 / max(1, crop.width))
+                    crop = crop.resize((int(crop.width*scale), int(crop.height*scale)), Image.Resampling.LANCZOS)
+                try:
+                    with _lock:
+                        region_text = _neural_lines(_local_engine(), crop)
+                except Exception:
+                    break
+                region = _supplement_front({}, region_text)
+                for key in ('DCS', 'DAC', 'DAD'):
+                    if region.get(key) and candidate.get(key) and region[key] != candidate[key]:
+                        # A disagreement is safer to flag for human review
+                        # than to report a plausible but incorrect name.
+                        candidate[key] = ''
+                    elif region.get(key) and not candidate.get(key):
+                        candidate[key] = region[key]
+        score = sum(2 if candidate.get(key) else 0 for key in ('DAQ','DAC','DCS','DBA')) + bool(candidate.get('DAJ'))
+        observations.append((score, angle, candidate))
+        if all(candidate.get(key) for key in ('DAQ','DAC','DCS','DBA','DAJ')):
+            break
+    if not observations:
+        return {}, 0
+    _, angle, best = max(observations, key=lambda item: item[0])
+    return best, angle
 
 
 def _ocr_license_candidates(raw):

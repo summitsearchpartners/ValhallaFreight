@@ -128,6 +128,11 @@ async def carrier_license_preview(photo:UploadFile=File(...),x_safe_load_token:s
     # A valid, unexpired load-specific invitation is required; never persist
     # the uploaded image or extracted identity data during preview.
     carrier(db,x_safe_load_token)
+    # The authorization lookup begins a SQLAlchemy transaction. Release its
+    # connection before CPU-intensive OCR so parallel scans cannot exhaust
+    # the production connection pool or leave idle-in-transaction sessions.
+    db.rollback()
+    db.close()
     raw=await photo.read(8*1024*1024+1)
     if len(raw)>8*1024*1024:raise HTTPException(413,'License photo must be under 8 MB')
     from app.services.safe_load_images import normalize,license_evidence
@@ -142,7 +147,7 @@ async def carrier_license_preview(photo:UploadFile=File(...),x_safe_load_token:s
             try:return datetime.strptime(value,fmt).date().isoformat()
             except ValueError:pass
         return ''
-    name=' '.join(part for part in (fields.get('DAC',''),fields.get('DAD',''),fields.get('DCS','')) if part and part.upper() not in {'NONE','NMN','UNKNOWN','UNK'})
+    name=' '.join(part for part in (fields.get('DCS',''),fields.get('DAC',''),fields.get('DAD','')) if part and part.upper() not in {'NONE','NMN','UNKNOWN','UNK'})
     return Response(json.dumps({'driver_name':name,'license_number':fields.get('DAQ',''),'issuing_state':fields.get('DAJ',''),'license_expires':expiration(fields.get('DBA','')),'source':evidence['source'],'warnings':evidence['errors'],'rotation_degrees':evidence.get('rotation_degrees',0)}),media_type='application/json',headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'})
 
 @router.post('/carrier')

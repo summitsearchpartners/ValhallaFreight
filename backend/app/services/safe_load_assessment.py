@@ -39,7 +39,8 @@ def assess(row,evidence,vehicle,vin_errors):
             reasons.append('License expiration differs from the dispatcher record and needs broker review')
             flags.append('license_expiration_changed')
     if not expected:reasons.append('Dispatcher license expiration is missing')
-    if vehicle and vehicle!=row.vin:reasons.append('Truck VIN does not match the dispatcher assignment')
+    if vehicle and vehicle!=row.vin:
+        reasons.append('Truck VIN OCR differs from the dispatcher assignment. Review the two full 17-character VINs and original photo for look-alike characters (0/O, 1/I, 5/S, 8/B); do not release until verified by the broker.')
     summary={'driver_name':' '.join([fields.get('DAC',''),fields.get('DCS','')]).strip(),'license_last4':re.sub('[^A-Z0-9]','',fields.get('DAQ','').upper())[-4:],'issuing_state':fields.get('DAJ',''),'expires_at':observed.isoformat() if observed else None,'vin':vehicle,'reader':evidence['source'],'flags':flags,'renewal_accepted':bool('valid_renewal_expiration' in flags),'requires_license_review':bool(set(flags)&{'license_identity_changed','license_expiration_changed'}),'name_matched':same_name,'license_identity_matched':same_id,'vin_matched':bool(vehicle and vehicle==row.vin),'decision':'broker_review' if reasons else 'matched'}
     missing=[k for k in ['DAQ','DAJ','DAC','DCS','DBA'] if not fields.get(k)]
     mismatch=bool((fields.get('DAQ') and fields.get('DAJ') and not same_id) or (fields.get('DAC') and fields.get('DCS') and not same_name) or (vehicle and vehicle!=row.vin))
