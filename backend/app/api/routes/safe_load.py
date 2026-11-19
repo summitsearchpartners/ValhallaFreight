@@ -124,7 +124,7 @@ def carrier_info(x_safe_load_token:str|None=Header(None),db:Session=Depends(get_
     return {'shipment_number':s.shipment_number,'origin_zip':s.origin.get('postal_code'),'destination_zip':s.destination.get('postal_code'),'status':row.status}
 
 @router.post('/carrier/license-preview')
-async def carrier_license_preview(photo:UploadFile=File(...),x_safe_load_token:str|None=Header(None),db:Session=Depends(get_db)):
+async def carrier_license_preview(photo:UploadFile=File(...),license_back_photo:UploadFile|None=File(None),x_safe_load_token:str|None=Header(None),db:Session=Depends(get_db)):
     # A valid, unexpired load-specific invitation is required; never persist
     # the uploaded image or extracted identity data during preview.
     carrier(db,x_safe_load_token)
@@ -140,6 +140,29 @@ async def carrier_license_preview(photo:UploadFile=File(...),x_safe_load_token:s
         normalized=await asyncio.to_thread(normalize,raw)
         evidence=await asyncio.to_thread(license_evidence,normalized)
     except ValueError as e:raise HTTPException(422,str(e))
+    # Use the same AAMVA PDF417 decoder as onsite ID-back verification.
+    # Never combine identity fields from two different cards or from an
+    # unverified barcode with conflicting front-image barcode evidence.
+    if license_back_photo is not None:
+        from app.services.safe_load_images import barcodes
+        from app.services.safe_load import decode_license
+        back=await license_back_photo.read(8*1024*1024+1)
+        if len(back)>8*1024*1024:raise HTTPException(413,'License back photo must be under 8 MB')
+        try:
+            decoded=[]
+            for code in await asyncio.to_thread(barcodes,back,True):
+                try:decoded.append(decode_license(code))
+                except ValueError:continue
+            if not decoded:
+                evidence={'fields':{},'source':'id_back_pdf417','errors':['License back PDF417 barcode could not be read. Retake the back photo or enter details manually.']}
+            elif any(item!=decoded[0] for item in decoded):
+                evidence={'fields':{},'source':'id_back_pdf417','errors':['Multiple different license barcodes detected. Review required.']}
+            elif evidence['source']=='pdf417' and any(evidence['fields'].get(k)!=decoded[0].get(k) for k in ('DAQ','DAJ','DAC','DCS','DBA')):
+                evidence={'fields':{},'source':'id_back_pdf417','errors':['Front and back license barcodes disagree. Review required.']}
+            else:
+                evidence={'fields':decoded[0],'source':'id_back_pdf417','errors':[]}
+        except ValueError:
+            evidence={'fields':{},'source':'id_back_pdf417','errors':['License back barcode could not be decoded. Review required.']}
     fields=evidence['fields']
     def expiration(value):
         if not value:return ''
@@ -147,7 +170,7 @@ async def carrier_license_preview(photo:UploadFile=File(...),x_safe_load_token:s
             try:return datetime.strptime(value,fmt).date().isoformat()
             except ValueError:pass
         return ''
-    name=' '.join(part for part in (fields.get('DCS',''),fields.get('DAC',''),fields.get('DAD','')) if part and part.upper() not in {'NONE','NMN','UNKNOWN','UNK'})
+    name=' '.join(part for part in (fields.get('DAC',''),fields.get('DAD',''),fields.get('DCS','')) if part and part.upper() not in {'NONE','NMN','UNKNOWN','UNK'})
     return Response(json.dumps({'driver_name':name,'license_number':fields.get('DAQ',''),'issuing_state':fields.get('DAJ',''),'license_expires':expiration(fields.get('DBA','')),'source':evidence['source'],'warnings':evidence['errors'],'rotation_degrees':evidence.get('rotation_degrees',0)}),media_type='application/json',headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'})
 
 @router.post('/carrier')
