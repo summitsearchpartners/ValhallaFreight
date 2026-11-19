@@ -1,6 +1,6 @@
+/** Shared Valhalla TMS branding for login, sidebar and customer portal. */
 export default function MusePoweredBy(){
-  return <div className="musePowered" title="Powered by Muse Freight">
-    <span>Powered by</span>
-    <a className="museLogoFrame museWebsiteLink" href="https://musefreight.com/" target="_blank" rel="noopener noreferrer" aria-label="Visit Muse Freight website (opens in a new tab)"><img src="/muse-freight-logo.png" alt="Muse Freight" width="300" height="100"/></a>
+  return <div className="musePowered valhallaPowered" title="Powered by Valhalla TMS" aria-label="Powered by Valhalla TMS">
+    <img src="/valhalla-tms-powered.webp" alt="Powered by Valhalla TMS" width="220" height="74" />
   </div>;
 }

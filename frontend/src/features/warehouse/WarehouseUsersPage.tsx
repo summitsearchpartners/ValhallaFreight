@@ -1,4 +1,5 @@
 import {useEffect,useState,type FormEvent} from 'react';
+import {useSearchParams} from 'react-router-dom';
 import {useAuth} from '../../context/AuthContext';
 import {api} from '../../services/api';
 
@@ -8,13 +9,15 @@ const empty={email:'',full_name:'',password:'',active:true};
 
 export default function WarehouseUsersPage(){
  const {user}=useAuth();const isSuper=user?.role==='admin';
+ const [searchParams]=useSearchParams();
+ const requestedCompanyId=Number(searchParams.get('customer_id')||0);
  const [companies,setCompanies]=useState<Company[]>([]);
- const [companyId,setCompanyId]=useState<number|undefined>(user?.customer_id??undefined);
+ const [companyId,setCompanyId]=useState<number|undefined>(isSuper?(requestedCompanyId>0?requestedCompanyId:undefined):(user?.customer_id??undefined));
  const [rows,setRows]=useState<WarehouseUser[]>([]);
  const [editing,setEditing]=useState<number|null>(null);
  const [form,setForm]=useState({...empty});
  const [error,setError]=useState('');const [notice,setNotice]=useState('');const [busy,setBusy]=useState(false);
- useEffect(()=>{if(isSuper)api<Company[]>('/admin/users/companies').then(v=>setCompanies(v.filter(c=>!c.manufacturer_id))).catch(e=>setError(e.message));},[isSuper]);
+ useEffect(()=>{if(isSuper)api<Company[]>('/admin/users/companies').then(v=>{const allowed=v.filter(c=>c.manufacturer_id==null);setCompanies(allowed);if(requestedCompanyId>0&&!allowed.some(c=>c.id===requestedCompanyId)){setCompanyId(undefined);setError('Selected customer is not a parent manufacturer company.')}}).catch(e=>setError(e.message));},[isSuper,requestedCompanyId]);
  useEffect(()=>{if(!companyId){setRows([]);return}api<WarehouseUser[]>(`/warehouse/users?customer_id=${companyId}`).then(setRows).catch(e=>setError(e.message));},[companyId]);
  function reload(){if(companyId)api<WarehouseUser[]>(`/warehouse/users?customer_id=${companyId}`).then(setRows).catch(e=>setError(e.message));}
  function select(row?:WarehouseUser){setEditing(row?.id??null);setForm(row?{email:row.email,full_name:row.full_name,password:'',active:row.active}:{...empty});setError('');setNotice('');}

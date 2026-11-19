@@ -72,7 +72,7 @@ def test_warehouse_cannot_perform_broker_or_export_actions(warehouse_setup, suff
 @pytest.mark.parametrize('path', [
     '/api/v1/admin/users', '/api/v1/quotes', '/api/v1/shipments',
     '/api/v1/truckload', '/api/v1/customers', '/api/v1/warehouse/users',
-    '/api/v1/notifications', '/api/v1/workspace/settings',
+    '/api/v1/notifications', '/api/v1/workspace/profile',
 ])
 def test_warehouse_is_not_a_tms_or_admin_account(warehouse_setup, path):
     client, _ = warehouse_setup

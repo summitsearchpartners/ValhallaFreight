@@ -111,3 +111,10 @@ dialog.musePdfViewer:not([open]){display:none}
 .museWebsiteLink{cursor:pointer;text-decoration:none}
 .museWebsiteLink:hover{box-shadow:0 0 0 2px #ef6c2780}
 .museWebsiteLink:focus-visible{outline:2px solid #ef6c27;outline-offset:4px}
+
+/* Valhalla-owned platform identity; legacy Muse integration branding remains elsewhere. */
+.valhallaPowered{width:100%;max-width:260px;min-width:0;justify-content:center;white-space:normal}
+.valhallaPowered img{display:block;width:min(100%,220px);height:auto;object-fit:contain;filter:drop-shadow(0 2px 7px #06c9ed35)}
+.sidebarFooter .valhallaPowered,.portalSideBottom>.valhallaPowered{justify-content:flex-start;margin:10px 0 0}
+.shellCollapsed .sidebarFooter .valhallaPowered img{width:42px;height:42px;object-fit:cover;object-position:left}
+@media(max-width:1200px){.sidebarFooter .valhallaPowered img{max-width:155px}}
