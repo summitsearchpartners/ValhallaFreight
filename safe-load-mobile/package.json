@@ -1,6 +1,6 @@
 {
   "name": "valhalla-safe-load",
-  "version": "0.19.18",
+  "version": "0.19.29",
   "private": true,
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
