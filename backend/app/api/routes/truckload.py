@@ -35,6 +35,11 @@ class Stop(BaseModel):
     state:str=Field(min_length=2,max_length=3)
     postal_code:str=Field(min_length=5,max_length=12)
     appointment_at:datetime
+    schedule_type:str='appointment'
+    appointment_end:datetime|None=None
+    open_time:str=Field(default='',max_length=5)
+    close_time:str=Field(default='',max_length=5)
+    gate_code:str=Field(default='',max_length=120)
     contact:str=Field(default='',max_length=180)
     phone:str=Field(default='',max_length=40)
     instructions:str=Field(default='',max_length=1000)
@@ -43,6 +48,13 @@ class Stop(BaseModel):
         if any(not getattr(self,key).strip() for key in ('name','address1','city','state','postal_code')):raise ValueError('Each stop requires a complete facility and street address')
         if self.kind not in {'pickup','delivery'}:raise ValueError('Stop type must be pickup or delivery')
         if self.appointment_at.tzinfo is not None:raise ValueError('Enter facility appointment time without a timezone offset')
+        if self.schedule_type not in {'appointment','window','fcfs'}:raise ValueError('Unsupported stop scheduling type')
+        if self.schedule_type=='window' and (self.appointment_end is None or self.appointment_end<self.appointment_at):raise ValueError('Appointment window end must follow start')
+        if self.appointment_end and self.appointment_end.tzinfo is not None:raise ValueError('Use facility local time for appointment window')
+        import re
+        for value in (self.open_time,self.close_time):
+            if value and (not re.fullmatch(r'(?:[01]\d|2[0-3]):[0-5]\d',value)):raise ValueError('Use HH:MM for facility hours')
+        if self.open_time and self.close_time and self.close_time<=self.open_time:raise ValueError('Facility closing time must follow opening time')
         return self
 class OrderIn(BaseModel):
     customer_id:int
@@ -65,13 +77,15 @@ class OrderIn(BaseModel):
         if self.equipment=='Reefer' and (self.temperature_min is None or self.temperature_max is None or self.temperature_min>self.temperature_max):raise ValueError('Reefer loads require a valid Fahrenheit temperature range')
         return self
 class BidIn(BaseModel):
-    carrier_id:int
+    carrier_id:int|None=None
+    carrier_name:str=Field(default='',max_length=180)
     carrier_cost:Decimal=Field(gt=0,max_digits=12,decimal_places=2)
-    expires_at:datetime
+    expires_at:datetime|None=None
     note:str=Field(default='',max_length=1000)
     @model_validator(mode='after')
     def valid(self):
-        if self.expires_at.tzinfo or self.expires_at<=datetime.utcnow():raise ValueError('Bid expiry must be a future UTC date/time without offset')
+        if self.expires_at and (self.expires_at.tzinfo or self.expires_at<=datetime.utcnow()):raise ValueError('Bid expiry must be a future UTC date/time without offset')
+        if not self.carrier_name.strip() and not self.carrier_id:raise ValueError('Enter a carrier name')
         return self
 class SelectBid(BaseModel):bid_id:int
 
@@ -127,9 +141,15 @@ def history(oid:int,user=Depends(brokers),db:Session=Depends(get_db)):
 def bid(oid:int,p:BidIn,user=Depends(brokers),db:Session=Depends(get_db)):
     row=order(db,oid,True)
     if row.shipment_id:raise HTTPException(409,'Booked rates are locked')
-    carrier=db.get(Carrier,p.carrier_id)
+    name=p.carrier_name.strip()
+    carrier=db.get(Carrier,p.carrier_id) if p.carrier_id else None
+    if name:
+        carrier=db.query(Carrier).filter(Carrier.name.ilike(name)).first()
+        if carrier is None:
+            carrier=Carrier(name=name,scac='V'+uuid4().hex[:9].upper(),mode='FTL',active=True,api_enabled=False)
+            db.add(carrier);db.flush()
     if not carrier or not carrier.active:raise HTTPException(404,'Active carrier not found')
-    db.add(TruckloadBid(order_id=oid,customer_id=row.customer_id,**p.model_dump()));db.commit();return output(db,row)
+    db.add(TruckloadBid(order_id=oid,customer_id=row.customer_id,carrier_id=carrier.id,carrier_cost=p.carrier_cost,expires_at=p.expires_at or datetime.utcnow()+timedelta(days=365),note=p.note));db.commit();return output(db,row)
 
 @router.post('/{oid}/select')
 def select(oid:int,p:SelectBid,user=Depends(brokers),db:Session=Depends(get_db)):
