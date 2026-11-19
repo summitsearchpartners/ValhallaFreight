@@ -198,6 +198,32 @@ def _front_card_fallback(source):
     return result
 
 
+def _name_region_fallback(source):
+    """Read numbered AAMVA name lines even when small labels are split/missed.
+
+    Only accept adjacent labelled surname/given-name lines. Never infer a
+    person's identity from a dispatcher record or an unlabelled OCR guess.
+    """
+    lines=[re.sub(r'\s+',' ',v.upper()).strip() for v in source.splitlines()]
+    lines=[v for v in lines if v]
+    found={'DCS':set(),'DAC':set()}
+    for i,line in enumerate(lines):
+        for key,number in (('DCS','1'),('DAC','2')):
+            match=re.search(r'(?<![A-Z0-9])'+number+r'\s*[.:]?\s+([A-Z][A-Z ,\'-]{1,48})$',line)
+            if not match and re.fullmatch(number+r'\s*[.:]?',line) and i+1<len(lines):
+                match=re.match(r'^([A-Z][A-Z ,\'-]{1,48})$',lines[i+1])
+            if match:
+                candidate=match.group(1).strip(' ,.-')
+                if not any(v in candidate.split() for v in ('NONE','LICENSE','CLASS','EXP','ISS','RESTR','ADDRESS')):
+                    found[key].add(candidate)
+    return {key:next(iter(values)) if len(values)==1 else '' for key,values in found.items()}
+
+
+def _merge_license_observations(first,second):
+    """Only supplement missing fields when observations do not conflict."""
+    return {key:(first.get(key) or second.get(key) or '') for key in ('DAQ','DAJ','DAC','DCS','DBA')}
+
+
 def _merge_front_fields(primary,secondary):
     """Conservative fill: never replace an already-read conflicting value."""
     return {key:(primary.get(key) or secondary.get(key,'') or '') for key in ('DAQ','DAJ','DAC','DCS','DBA')}
@@ -219,23 +245,30 @@ def _license_ocr_variants(raw):
 
 
 def _ocr_license_candidates(raw):
-    """Fast, orientation-aware card reading with conservative fallback parsing."""
+    """Time-bounded OCR: one normal pass plus one layout pass if incomplete."""
     deadline=time.monotonic()+16
     best={};best_angle=0;best_score=-1
-    # Most uploads are already upright. Stop after a complete parse; only
-    # rotate when the first image is incomplete.
     for angle,prepared in _license_ocr_variants(raw):
         remaining=deadline-time.monotonic()
         if remaining<1:break
-        try:
-            recognized=text(prepared,11,timeout=min(5,max(1,int(remaining))))
+        try:recognized=text(prepared,11,timeout=min(5,max(1,int(remaining))))
         except ValueError:continue
         parsed=parse_license_text(recognized)
-        fallback=_front_card_fallback(recognized)
-        candidate=_merge_front_fields(parsed,fallback)
+        candidate=_merge_front_fields(parsed,_front_card_fallback(recognized))
+        candidate=_merge_license_observations(candidate,_name_region_fallback(recognized))
+        # PSM 11 can fragment numbered names. A single PSM 6 pass is a
+        # bounded fallback, not a full multi-enhancement OCR sweep.
+        if (not candidate.get('DAC') or not candidate.get('DCS') or not candidate.get('DBA')) and angle==0:
+            remaining=deadline-time.monotonic()
+            if remaining>=2:
+                try:
+                    alternate=text(prepared,6,timeout=min(4,max(1,int(remaining))))
+                    other=_merge_front_fields(parse_license_text(alternate),_front_card_fallback(alternate))
+                    other=_merge_license_observations(other,_name_region_fallback(alternate))
+                    candidate=_merge_license_observations(candidate,other)
+                except ValueError:pass
         score=sum(2 if candidate.get(k) else 0 for k in ('DAQ','DAC','DCS','DBA'))+int(bool(candidate.get('DAJ')))
-        if score>best_score:
-            best,best_angle,best_score=candidate,angle,score
+        if score>best_score:best,best_angle,best_score=candidate,angle,score
         if all(candidate.get(k) for k in ('DAQ','DAC','DCS','DBA','DAJ')):break
     return best,best_angle
 
