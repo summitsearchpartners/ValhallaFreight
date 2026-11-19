@@ -12,6 +12,7 @@ export default function CarrierSubmission(){
   const seq=++readSeq.current;setReading(true);setReadMessage('Scanning license (you can fill in fields while it runs)…');
   try{const body=new FormData();body.set('photo',next);const r=await fetch(base+'/license-preview',{method:'POST',headers:{'X-Safe-Load-Token':token},body});const data=await r.json();if(!r.ok)throw Error(typeof data.detail==='string'?data.detail:'Unable to read license');
    if(seq!==readSeq.current)return;
+   if(data.rotation_degrees && [90,180,270].includes(data.rotation_degrees)){try{const upright=await rotatePhoto(next,data.rotation_degrees);if(seq!==readSeq.current)return;setFile(upright);setPreview(URL.createObjectURL(upright));setReadMessage('Photo automatically rotated upright. Verify the extracted fields.')}catch{setReadMessage('Automatic photo rotation unavailable. Use the rotate buttons if needed.')}}
    setFields(previous=>Object.fromEntries(Object.entries(previous).map(([key,value])=>[key,edited.current.has(key)?value:(data[key]||value)])) as typeof previous);
    setReadMessage((data.warnings?.length?'Some fields could not be read. Verify and complete them manually.':'License fields populated. Verify all details against the photo before submission.')+' This is text extraction, not identity authentication.');
   }catch(e:any){if(seq===readSeq.current)setReadMessage('Automatic reading unavailable: '+e.message+'. Enter the license details manually.')}finally{if(seq===readSeq.current)setReading(false)}

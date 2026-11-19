@@ -141,13 +141,66 @@ def parse_license_text(source):
             elif key=='DAJ':
                 candidate=re.match(r'^([A-Z]{2})\b',fragment)
                 if candidate:found[key].add(candidate.group(1))
-    from app.api.routes.truckload import STATES
+    try:
+        from app.api.routes.truckload import STATES
+    except ImportError:
+        STATES={'OK':'Oklahoma','KS':'Kansas','MO':'Missouri','TX':'Texas','CA':'California'}
     if not found['DAJ']:
         state_names={code for code,name in STATES.items() if re.search(r'\b'+re.escape(name.upper())+r'\b',source)}
         if len(state_names)==1:found['DAJ']=state_names
     for key,values in found.items():
         if len(values)==1:fields[key]=next(iter(values))
     return fields
+
+def _front_card_fallback(source):
+    """Read common AAMVA front layouts when OCR drops tiny numeric field labels.
+
+    Only take values in anchored card regions; never guess missing identity values
+    from arbitrary numbers or use a dispatcher-provided identity as a hint.
+    """
+    lines=[re.sub(r'\s+',' ',v).strip(' .:;|') for v in source.upper().splitlines()]
+    lines=[v for v in lines if v]
+    result={'DAQ':'','DAC':'','DCS':'','DBA':''}
+    # Number directly below the printed DRIVER LICENSE header or next to LIC NO.
+    for i,line in enumerate(lines):
+        if re.search(r'\b(?:DRIVER\s+LICEN[CS]E|LICEN[CS]E\s+(?:NO|NUMBER)|DL\s*(?:NO|NUMBER))\b',line):
+            nearby=lines[i:i+3]
+            candidates=[]
+            for v in nearby:
+                v=re.sub(r'^.*?(?:LICEN[CS]E\s*(?:NO|NUMBER)|DL\s*(?:NO|NUMBER))\s*[:#.]?','',v)
+                # Date-like strings are never license numbers.
+                for token in re.findall(r'(?<![A-Z0-9])[A-Z0-9]{7,15}(?![A-Z0-9])',v):
+                    if re.search(r'\d',token) and not re.fullmatch(r'(?:19|20)\d{6}',token) and token not in ('LICENSE','DRIVER'):
+                        candidates.append(token)
+            if len(set(candidates))==1:result['DAQ']=candidates[0]
+            break
+    # Names printed immediately after DOB, before street address. OCR often
+    # drops the small "1" and "2" labels on high-security license stock.
+    dob_index=next((i for i,line in enumerate(lines) if re.search(r'\b(?:DOB|BIRTH)\b',line)),None)
+    if dob_index is not None:
+        region=lines[dob_index+1:dob_index+5]
+        names=[]
+        for line in region:
+            candidate=re.sub(r'^(?:1|2)\s*[.:]\s*','',line)
+            if (re.fullmatch(r"[A-Z][A-Z ,.'-]{1,45}",candidate) and
+                not any(word in candidate.split() for word in ('NONE','RESTR','CLASS','ISS','EXP','DRIVER','LICENSE','OKLAHOMA','ADDRESS','ENID'))):
+                names.append(candidate.strip(' ,'))
+            elif re.search(r'\d{2,}',candidate):break
+        if len(names)>=2:
+            result['DCS']=names[0]
+            result['DAC']=names[1]
+    # Expiration must have an explicit EXP label; never borrow issue or DOB.
+    for line in lines:
+        match=re.search(r'\bEXP(?:IRATION|IRES)?\b[^0-9]{0,12}(\d{2}[/.-]\d{2}[/.-]\d{4})',line)
+        if match:
+            try:result['DBA']=datetime.strptime(match.group(1).replace('.','/').replace('-','/'),'%m/%d/%Y').strftime('%m%d%Y')
+            except ValueError:pass
+    return result
+
+
+def _merge_front_fields(primary,secondary):
+    """Conservative fill: never replace an already-read conflicting value."""
+    return {key:(primary.get(key) or secondary.get(key,'') or '') for key in ('DAQ','DAJ','DAC','DCS','DBA')}
 
 def rotated(raw,angle):
     if angle==0:return raw
@@ -166,24 +219,25 @@ def _license_ocr_variants(raw):
 
 
 def _ocr_license_candidates(raw):
-    """Bound OCR latency; only use values actually recognized in the image."""
-    observed={key:set() for key in ('DAQ','DAJ','DAC','DCS','DBA')}
+    """Fast, orientation-aware card reading with conservative fallback parsing."""
     deadline=time.monotonic()+16
+    best={};best_angle=0;best_score=-1
+    # Most uploads are already upright. Stop after a complete parse; only
+    # rotate when the first image is incomplete.
     for angle,prepared in _license_ocr_variants(raw):
-        if time.monotonic()>=deadline:break
+        remaining=deadline-time.monotonic()
+        if remaining<1:break
         try:
-            # Sparse text mode handles many front-card layouts better than block mode.
-            candidate=parse_license_text(text(prepared,11,timeout=min(5,max(1,int(deadline-time.monotonic())))))
+            recognized=text(prepared,11,timeout=min(5,max(1,int(remaining))))
         except ValueError:continue
-        for key,value in candidate.items():
-            if value:observed[key].add(value)
-        # A full unambiguous set needs no further OCR work.
-        if all(len(values)==1 for values in observed.values()):break
-    numbers=observed['DAQ']
-    if len(numbers)>1:
-        longest=sorted(numbers,key=len,reverse=True)[0]
-        if all(longest.startswith(item) for item in numbers):observed['DAQ']={longest}
-    return {key:next(iter(values)) if len(values)==1 else '' for key,values in observed.items()}
+        parsed=parse_license_text(recognized)
+        fallback=_front_card_fallback(recognized)
+        candidate=_merge_front_fields(parsed,fallback)
+        score=sum(2 if candidate.get(k) else 0 for k in ('DAQ','DAC','DCS','DBA'))+int(bool(candidate.get('DAJ')))
+        if score>best_score:
+            best,best_angle,best_score=candidate,angle,score
+        if all(candidate.get(k) for k in ('DAQ','DAC','DCS','DBA','DAJ')):break
+    return best,best_angle
 
 def license_evidence(raw):
     from app.services.safe_load import decode_license
@@ -195,13 +249,13 @@ def license_evidence(raw):
         if any(c!=codes[0] for c in codes):return {'fields':{},'source':'pdf417','errors':['Multiple different licenses found in the photo']}
         best=codes[0];source='pdf417'
     else:
-        source='local_ocr';best={}
+        source='local_ocr';best={};angle=0
         if not _tesseract_executable():
             return {'fields':{},'source':source,'errors':['Local Tesseract OCR is missing. Install the offline OCR engine and English language data; freight remains held for broker review.']}
-        best=_ocr_license_candidates(raw)
+        best,angle=_ocr_license_candidates(raw)
     labels={'DAQ':'License number','DAJ':'Issuing state','DAC':'First name','DCS':'Last name','DBA':'Expiration date'}
     errors=[name+' could not be read unambiguously from the onsite ID photo' for k,name in labels.items() if not best.get(k)]
-    return {'fields':best,'source':source,'errors':errors}
+    return {'fields':best,'source':source,'errors':errors,'rotation_degrees':(360-angle)%360 if source=='local_ocr' else 0}
 
 def license_data(raw):
     result=license_evidence(raw)
