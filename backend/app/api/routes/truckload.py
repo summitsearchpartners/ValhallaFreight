@@ -37,6 +37,11 @@ class Stop(BaseModel):
     appointment_at:datetime
     schedule_type:str='appointment'
     appointment_end:datetime|None=None
+    @field_validator('appointment_end', mode='before')
+    @classmethod
+    def empty_appointment_end_is_none(cls, value):
+        # Browsers submit an empty datetime-local input as ''. Only windows require an end.
+        return None if value is None or (isinstance(value, str) and not value.strip()) else value
     open_time:str=Field(default='',max_length=5)
     close_time:str=Field(default='',max_length=5)
     gate_code:str=Field(default='',max_length=120)
