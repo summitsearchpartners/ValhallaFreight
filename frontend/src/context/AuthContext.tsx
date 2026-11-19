@@ -4,7 +4,7 @@ import {createContext, useContext, useEffect, useRef, useState, type ReactNode} 
 import {api, clearAccessToken, getAccessToken, setAccessToken} from '../services/api';
 
 export type AuthUser={id:number;email:string;full_name:string;role:string;muse_partner_access?:boolean;actual_role?:string;customer_id?:number|null;active:boolean};
-type AuthValue={user:AuthUser|null;loading:boolean;login:(email:string,password:string)=>Promise<AuthUser>;refreshUser:()=>Promise<void>;logout:()=>void};
+type AuthValue={user:AuthUser|null;loading:boolean;authError:string|null;retryAuth:()=>void;login:(email:string,password:string)=>Promise<AuthUser>;refreshUser:()=>Promise<void>;logout:()=>void};
 function workspaceUser(user:AuthUser):AuthUser{const support=manufacturerSupport();return support&&user.role==='admin'?{...user,actual_role:'admin',role:'manufacturer_admin',customer_id:support.customer_id}:user}
 const AuthContext=createContext<AuthValue|null>(null);
 
@@ -12,11 +12,29 @@ export function AuthProvider({children}:{children:ReactNode}){
   const location=useLocation();const lastInput=useRef(Date.now());
   const [user,setUser]=useState<AuthUser|null>(null);
   const [loading,setLoading]=useState(true);
+  const [authError,setAuthError]=useState<string|null>(null);
+  const [authAttempt,setAuthAttempt]=useState(0);
   useEffect(()=>{
     const token=getAccessToken();
-    if(!token){setLoading(false);return;}
-    api<AuthUser>('/auth/me').then(value=>setUser(workspaceUser(value))).catch(()=>{}).finally(()=>setLoading(false));
-  },[]);
+    if(!token){setUser(null);setAuthError(null);setLoading(false);return;}
+    const controller=new AbortController();
+    let active=true;
+    setLoading(true);
+    setAuthError(null);
+    // A stalled API must never leave the portal on its splash screen forever.
+    const timeout=setTimeout(()=>controller.abort(),12000);
+    api<AuthUser>('/auth/me',{signal:controller.signal})
+      .then(value=>{if(active&&!controller.signal.aborted){setUser(workspaceUser(value));setAuthError(null)}})
+      .catch(error=>{
+        if(active){
+          if(!getAccessToken()){setUser(null);setAuthError(null)}
+          else setAuthError(error?.name==='AbortError'?'The server did not respond within 12 seconds.':'Unable to verify your session. The server may be temporarily unavailable.');
+        }
+      })
+      .finally(()=>{clearTimeout(timeout);if(active)setLoading(false)});
+    return()=>{active=false;clearTimeout(timeout);controller.abort()};
+  },[authAttempt]);
+  function retryAuth(){setAuthAttempt(value=>value+1)}
   useEffect(()=>{
     const active=()=>{lastInput.current=Date.now()};
     for(const name of ['pointerdown','keydown','mousemove','scroll'])window.addEventListener(name,active,{passive:true});
@@ -34,10 +52,10 @@ export function AuthProvider({children}:{children:ReactNode}){
   },[user?.id,location.pathname]);
   async function login(email:string,password:string){
     const result=await api<{access_token:string;user:AuthUser}>('/auth/login',{method:'POST',body:JSON.stringify({email,password})});
-    setAccessToken(result.access_token); setUser(result.user); return result.user;
+    setAccessToken(result.access_token); setAuthError(null); setUser(result.user); return result.user;
   }
   async function refreshUser(){setUser(workspaceUser(await api<AuthUser>('/auth/me')))}
-  function logout(){if(manufacturerSupport()){api('/admin/portal-access/end',{method:'POST'}).then(()=>{clearManufacturerSupport();window.close();window.location.assign('/admin/portal-access')}).catch(()=>window.dispatchEvent(new Event('manufacturer-support-expired')));return}api('/auth/logout',{method:'POST'}).catch(()=>{});clearAccessToken();setUser(null);}
-  return <AuthContext.Provider value={{user,loading,login,logout,refreshUser}}>{children}</AuthContext.Provider>;
+  function logout(){if(manufacturerSupport()){api('/admin/portal-access/end',{method:'POST'}).then(()=>{clearManufacturerSupport();window.close();window.location.assign('/admin/portal-access')}).catch(()=>window.dispatchEvent(new Event('manufacturer-support-expired')));return}api('/auth/logout',{method:'POST'}).catch(()=>{});clearAccessToken();setAuthError(null);setUser(null);}
+  return <AuthContext.Provider value={{user,loading,authError,retryAuth,login,logout,refreshUser}}>{children}</AuthContext.Provider>;
 }
 export function useAuth(){const value=useContext(AuthContext);if(!value)throw new Error('useAuth must be inside AuthProvider');return value;}
