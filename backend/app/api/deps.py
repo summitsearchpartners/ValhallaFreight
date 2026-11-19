@@ -30,7 +30,7 @@ def get_current_user(
     # Role is read from DB each request, so deactivation and role changes apply immediately.
     if user.role == 'warehouse':
         path = request.url.path
-        if path not in {'/api/v1/auth/me', '/api/v1/auth/logout'} and not path.startswith('/api/v1/safe-load'):
+        if path not in {'/api/v1/auth/me', '/api/v1/auth/logout'} and not (path == '/api/v1/safe-load' or path.startswith('/api/v1/safe-load/')):
             raise HTTPException(403, 'Warehouse accounts are restricted to the Safe Load mobile application')
     from app.services.muse_partner import has_access
     user.muse_partner_access=has_access(db,user)

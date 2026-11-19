@@ -1,5 +1,5 @@
 """Local image normalization, barcode decoding and conservative OCR. No remote ID upload."""
-import io,re,subprocess,time
+import io,re,subprocess,time,os,shutil,logging
 from datetime import datetime
 from PIL import Image,ImageOps,ImageStat
 
@@ -18,11 +18,35 @@ def normalize(raw,limit=2400,allow_blank=False):
         return output.getvalue()
     except Exception:raise ValueError('Photo is blank, unsupported or too large. Retake a well-lit JPEG/PNG/WebP photo, maximum 16 megapixels.')
 
+def _tesseract_executable():
+    """Find the offline OCR binary on Windows/Linux without requiring PATH edits."""
+    choices = [os.environ.get('SAFE_LOAD_TESSERACT_PATH'), os.environ.get('TESSERACT_CMD'), shutil.which('tesseract')]
+    if os.name == 'nt':
+        for root in (os.environ.get('ProgramFiles'), os.environ.get('ProgramFiles(x86)'), os.environ.get('LOCALAPPDATA')):
+            if root:
+                choices.append(os.path.join(root, 'Tesseract-OCR', 'tesseract.exe'))
+    # Common winget/Chocolatey/Scoop installations on Windows.
+    if os.name == 'nt':
+        home = os.path.expanduser('~')
+        choices.extend([
+            os.path.join(home, 'scoop', 'apps', 'tesseract', 'current', 'tesseract.exe'),
+            os.path.join(os.environ.get('ChocolateyInstall', r'C:\\ProgramData\\chocolatey'), 'bin', 'tesseract.exe'),
+            os.path.join(os.environ.get('LOCALAPPDATA', home), 'Programs', 'Tesseract-OCR', 'tesseract.exe'),
+        ])
+    choices.extend(['/usr/bin/tesseract', '/usr/local/bin/tesseract'])
+    return next((p for p in choices if p and os.path.isfile(p)), None)
+
+
 def text(raw,psm=6):
+    executable = _tesseract_executable()
+    if not executable:
+        raise ValueError('Local Tesseract OCR is not installed or discoverable. Install Tesseract OCR with English language data or set SAFE_LOAD_TESSERACT_PATH. Freight remains held for broker review.')
     try:
-        result=subprocess.run(['tesseract','stdin','stdout','-l','eng','--psm',str(psm)],input=raw,capture_output=True,timeout=8,check=True)
+        result=subprocess.run([executable,'stdin','stdout','-l','eng','--psm',str(psm)],input=raw,capture_output=True,timeout=12,check=True)
         return result.stdout.decode('utf-8',errors='replace').upper()
-    except (OSError,subprocess.SubprocessError):raise ValueError('Local photo reader unavailable or timed out. Freight remains blocked; contact the broker.')
+    except (OSError,subprocess.SubprocessError) as exc:
+        logging.getLogger(__name__).warning('Local Tesseract OCR failed: %s',exc)
+        raise ValueError('Local photo reader unavailable or timed out. Verify Tesseract English language data. Freight remains blocked; contact the broker.') from exc
 
 def barcodes(raw,license_only=False):
     import zxingcpp
@@ -55,32 +79,93 @@ def optional(pattern,source):
     except ValueError:return ''
 
 def parse_license_text(source):
-    # Numbered AAMVA front-card labels can be inline, on their own line, or in columns.
-    source=source.upper().replace('’',"'")
-    fields={}
-    fields['DAQ']=optional(r'(?:^|\n|\s)(?:4D|DLN?\s*(?:NO\.?|NUMBER|#)|LICEN[CS]E\s*(?:NO\.?|NUMBER|#)|5)[.:# -]*[ \t]*(?:\n[ \t]*)?([A-Z0-9][A-Z0-9-]{3,29})(?=[ \t]*(?:\n|$)|[ \t]+(?:3|4[A-C])\b)',source)
-    def name(label):
-        value=optional(r'(?:^|\n)[ \t]*(?:'+label+r')[.: -]*[ \t]*(?:\n[ \t]*)?([A-Z][A-Z .,\'-]{0,65})[ \t]*(?=\n|$)',source)
-        # Do not turn address/endorsement text into a name when labels were missed.
-        if any(word in value.split() for word in ['RESTRICTIONS','ENDORSEMENTS','LICENSE','DRIVER','ISS','EXP','NONE']):return ''
-        return value.strip(' .,')
-    fields['DAC']=name(r'FIRST[ \t]*NAME|FN|2')
-    fields['DCS']=name(r'LAST[ \t]*NAME|LN|1')
-    expiry=optional(r'(?:EXP(?:IRATION|IRES)?(?:[ \t]*DATE)?|4B(?:[ \t]*EXP)?)[ \t.:#-]*(?:\n[ \t]*)?(\d{2}[/.-]\d{2}[/.-]\d{4}|\d{4}-\d{2}-\d{2})',source)
-    try:
-        cleaned=expiry.replace('.','/').replace('-','/')
-        fields['DBA']=datetime.strptime(cleaned,'%Y/%m/%d' if len(cleaned.split('/')[0])==4 else '%m/%d/%Y').strftime('%m%d%Y')
-    except ValueError:fields['DBA']=''
-    fields['DAJ']=optional(r'ISSUING\s*STATE[ :.-]+([A-Z]{2})\b',source)
-    if not fields['DAJ']:
-        from app.api.routes.truckload import STATES
-        candidates={code for code,name in STATES.items() if re.search(r'\b'+re.escape(name.upper())+r'\b',source)}
-        if len(candidates)==1:fields['DAJ']=candidates.pop()
+    """Parse independent, explicitly labelled AAMVA front-card fields.
+
+    A line may contain multiple numbered fields, and OCR can introduce spacing
+    around labels. Never infer an ID from unrelated numbers or resolve conflicts
+    by choosing whichever value happens to match the dispatcher assignment.
+    """
+    source = source.upper().replace('’', "'").replace('\r', '')
+    lines = [re.sub(r'[ \t]+', ' ', line).strip() for line in source.splitlines()]
+    fields = {'DAQ':'', 'DAC':'', 'DCS':'', 'DBA':'', 'DAJ':''}
+    patterns = {
+        'DAQ': r'(?:\bDL\s*(?:NUMBER|NO\.?|#)|\bLICEN[CS]E\s*(?:NUMBER|NO\.?|#)|(?<![A-Z0-9])4\s*D\.?|(?<![A-Z0-9])DLN\b)',
+        'DAC': r'(?:\bFIRST\s*NAME\b|(?<![A-Z0-9])2\s*\.|\bFN\s*:)',
+        'DCS': r'(?:\bLAST\s*NAME\b|(?<![A-Z0-9])1\s*\.|\bLN\s*:)',
+        'DBA': r'(?:\bEXP(?:IRATION|IRES)?(?:\s*DATE)?\b|(?<![A-Z0-9])4\s*B\b(?:\s*EXP)?)',
+        'DAJ': r'\bISSUING\s*STATE\b',
+    }
+    combined = re.compile('|'.join('(?P<'+key+'>'+pattern+')' for key,pattern in patterns.items()))
+    found = {key:set() for key in fields}
+    for index,line in enumerate(lines):
+        matches=list(combined.finditer(line))
+        for position,match in enumerate(matches):
+            key=match.lastgroup
+            end=matches[position+1].start() if position+1<len(matches) else len(line)
+            fragment=line[match.end():end].strip(' .:#-')
+            if not fragment and index+1<len(lines):fragment=lines[index+1]
+            if key=='DAQ':
+                # Numbered cards often put the DOB immediately after the license:
+                # '4d. TEST1234 3. 01/01/1990'.  The '3.' is a separate
+                # printed field, not part of the license number.  Do not strip
+                # arbitrary digits: only explicit numbered-field boundaries.
+                fragment=re.split(r'\s+(?:(?:[1-9]|4[A-C])\s*[.:]\s*|4[A-C]\s+(?:ISS|EXP)\b)',fragment,maxsplit=1,flags=re.I)[0].strip()
+                # Tesseract sometimes separates a license's letter prefix and digits
+                # (TEST 1234). Join only within the explicitly labelled field, and
+                # never across another labelled field or a date-like token.
+                tokens=re.findall(r'[A-Z0-9]+',fragment)
+                if tokens and re.match(r'^[A-Z0-9-]{4,30}$',tokens[0]):
+                    value=tokens[0]
+                    if (len(tokens)>1 and len(tokens)==2 and
+                        re.fullmatch(r'[A-Z]+',tokens[0]) and
+                        re.fullmatch(r'[0-9]{2,12}',tokens[1]) and
+                        len(tokens[0])+len(tokens[1])<=30):
+                        value=tokens[0]+tokens[1]
+                    # Do not accept trailing prose as an identity value.
+                    if len(tokens)==1 or value!=tokens[0]:
+                        found[key].add(value)
+            elif key in ('DAC','DCS'):
+                candidate=re.match(r"^([A-Z][A-Z . ,\'-]{0,65}?)(?=\s{2,}|$|\s+\d|\s+(?:ISS|EXP|DL|4[A-D])\b)",fragment)
+                if not candidate:
+                    candidate=re.match(r"^([A-Z][A-Z . ,\'-]{0,65})$",fragment)
+                if candidate:
+                    value=candidate.group(1).strip(' .,')
+                    if value and not any(word in value.split() for word in ('RESTRICTIONS','ENDORSEMENTS','LICENSE','DRIVER','ISS','EXP','NONE')):
+                        found[key].add(value)
+            elif key=='DBA':
+                candidate=re.search(r'(?<!\d)(\d{2}[/.-]\d{2}[/.-]\d{4}|\d{4}-\d{2}-\d{2})(?!\d)',fragment)
+                if candidate:
+                    date=candidate.group(1).replace('.','/').replace('-','/')
+                    try:found[key].add(datetime.strptime(date,'%Y/%m/%d' if len(date.split('/')[0])==4 else '%m/%d/%Y').strftime('%m%d%Y'))
+                    except ValueError:pass
+            elif key=='DAJ':
+                candidate=re.match(r'^([A-Z]{2})\b',fragment)
+                if candidate:found[key].add(candidate.group(1))
+    from app.api.routes.truckload import STATES
+    if not found['DAJ']:
+        state_names={code for code,name in STATES.items() if re.search(r'\b'+re.escape(name.upper())+r'\b',source)}
+        if len(state_names)==1:found['DAJ']=state_names
+    for key,values in found.items():
+        if len(values)==1:fields[key]=next(iter(values))
     return fields
 
 def rotated(raw,angle):
     if angle==0:return raw
     output=io.BytesIO();Image.open(io.BytesIO(raw)).rotate(angle,expand=True).save(output,'PNG');return output.getvalue()
+
+def _license_ocr_variants(raw):
+    """Try orientation and contrast, retaining the original evidence unchanged."""
+    original=ImageOps.exif_transpose(Image.open(io.BytesIO(raw))).convert('L')
+    for angle in (0,90,270,180):
+        oriented=original.rotate(angle,expand=True)
+        scale=min(3,max(1,2000/max(oriented.width,1)))
+        if scale>1:
+            oriented=oriented.resize((round(oriented.width*scale),round(oriented.height*scale)),Image.Resampling.LANCZOS)
+        contrast=ImageOps.autocontrast(oriented)
+        for variant in (contrast,ImageOps.autocontrast(contrast,cutoff=2)):
+            output=io.BytesIO();variant.save(output,'PNG')
+            yield angle,output.getvalue()
+
 
 def license_evidence(raw):
     from app.services.safe_load import decode_license
@@ -92,19 +177,32 @@ def license_evidence(raw):
         if any(c!=codes[0] for c in codes):return {'fields':{},'source':'pdf417','errors':['Multiple different licenses found in the photo']}
         best=codes[0];source='pdf417'
     else:
-        best={};source='local_ocr';deadline=time.monotonic()+36
-        for angle,psm in [(a,p) for p in [11,6] for a in [0,90,270,180]]:
+        source='local_ocr';best={};deadline=time.monotonic()+55
+        # OCR is mandatory for a front-only ID. Never fabricate identity fields,
+        # and never turn an unreadable document into an automatic release.
+        if not _tesseract_executable():
+            return {'fields':{},'source':source,'errors':['Local Tesseract OCR is missing. Install the offline OCR engine and English language data; freight remains held for broker review.']}
+        observed={key:set() for key in ('DAQ','DAJ','DAC','DCS','DBA')}
+        for angle,prepared in _license_ocr_variants(raw):
             if time.monotonic()>deadline:break
-            try:
-                oriented=rotated(raw,angle)
-                image=ImageOps.autocontrast(Image.open(io.BytesIO(oriented)).convert('L'))
-                if image.width<1400:
-                    scale=min(3,1800/image.width);image=image.resize((round(image.width*scale),round(image.height*scale)),Image.Resampling.LANCZOS)
-                buf=io.BytesIO();image.save(buf,'PNG')
-                candidate=parse_license_text(text(buf.getvalue(),psm))
-            except ValueError:continue
-            if sum(bool(v) for v in candidate.values())>sum(bool(v) for v in best.values()):best=candidate
-            if all(best.get(k) for k in ['DAQ','DAJ','DAC','DCS','DBA']):break
+            for psm in (11,6,3):
+                if time.monotonic()>deadline:break
+                try:candidate=parse_license_text(text(prepared,psm))
+                except ValueError:continue
+                for key,value in candidate.items():
+                    if value:observed[key].add(value)
+                # Do not stop on the first complete-looking OCR result: a truncated
+                # DAQ such as TEST must not suppress a later TEST1234 reading.
+            if time.monotonic()>deadline:break
+        # A strict prefix may be a truncated read of the same printed value.
+        # Only prefer a longer reading when the short read is its exact prefix;
+        # unrelated conflicting license numbers remain ambiguous and blocked.
+        numbers=observed['DAQ']
+        if len(numbers)>1:
+            longest=sorted(numbers,key=len,reverse=True)[0]
+            if all(longest.startswith(item) for item in numbers):
+                observed['DAQ']={longest}
+        best={key:next(iter(values)) if len(values)==1 else '' for key,values in observed.items()}
     labels={'DAQ':'License number','DAJ':'Issuing state','DAC':'First name','DCS':'Last name','DBA':'Expiration date'}
     errors=[name+' could not be read unambiguously from the onsite ID photo' for k,name in labels.items() if not best.get(k)]
     return {'fields':best,'source':source,'errors':errors}

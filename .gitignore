@@ -72,3 +72,6 @@ docs/safe-load-test-photos/
 
 # Generated TypeScript cache
 *.tsbuildinfo
+
+# Local Warehouse Role test environment
+.venv-warehouse-test/

@@ -1,4 +1,6 @@
 """Synthetic documents only: no customer identity data."""
+from conftest import synthetic_font
+
 from app.services.safe_load_images import parse_license_text
 
 def test_numbered_inline_fields_distinguish_birth_issue_and_expiry():
@@ -20,7 +22,7 @@ def test_numbered_card_real_ocr_rotated():
     from PIL import Image,ImageDraw,ImageFont
     from app.services.safe_load_images import license_evidence
     im=Image.new('RGB',(1400,850),'white');draw=ImageDraw.Draw(im)
-    font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',36)
+    font=synthetic_font(36, family='sans', style='regular')
     for i,line in enumerate(['OKLAHOMA','4d. TEST1234 3. 01/01/1990','4a ISS 05/11/2026 4b EXP 03/31/2035','1. DOE','2. JOHN ALAN, JR']):draw.text((80,80+i*110),line,font=font,fill='black')
     data=io.BytesIO();im.rotate(90,expand=True).save(data,'JPEG',quality=95)
     result=license_evidence(data.getvalue())

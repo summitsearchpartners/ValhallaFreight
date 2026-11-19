@@ -1,3 +1,4 @@
+from conftest import synthetic_font
 from io import BytesIO
 from pathlib import Path
 import base64,pytest
@@ -5,10 +6,10 @@ from PIL import Image,ImageDraw,ImageFont
 from test_manufacturer import headers,setup
 from test_truckload_safe_load import freight,book,submit,approve
 from app.models import SafeLoadPhotoAttempt,Shipment
-from app.services.safe_load_images import license_data,vehicle,normalize
+from app.services.safe_load_images import license_data,vehicle,normalize,_tesseract_executable
 
 def photo(lines):
-    img=Image.new('RGB',(1800,700),'white');d=ImageDraw.Draw(img);font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf',40) if Path('/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf').exists() else ImageFont.load_default(size=40)
+    img=Image.new('RGB',(1800,700),'white');d=ImageDraw.Draw(img);font=synthetic_font(40, family='mono', style='regular') if Path('/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf').exists() else ImageFont.load_default(size=40)
     for n,line in enumerate(lines):d.text((40,40+n*72),line,fill='black',font=font)
     b=BytesIO();img.save(b,'JPEG');return b.getvalue()
 
@@ -24,6 +25,7 @@ def prepared(c):
     return sid,rev
 
 def test_real_local_ocr_reads_synthetic_document():
+    assert _tesseract_executable(), 'Install Tesseract OCR with English language data before running OCR integration tests'
     fields=license_data(normalize(license_photo()))
     assert fields['DAQ']=='TEST1234' and fields['DAC']=='JOHN' and fields['DAJ']=='KS'
     assert vehicle(normalize(photo(['VIN 1HGCM82633A004352'])))=='1HGCM82633A004352'

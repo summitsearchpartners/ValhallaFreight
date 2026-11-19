@@ -1,3 +1,4 @@
+from conftest import synthetic_font
 from io import BytesIO
 from pathlib import Path
 import pytest,numpy as np,zxingcpp
@@ -13,7 +14,7 @@ def encoded(value,format):
     code=zxingcpp.create_barcode(value,format);image=Image.fromarray(np.asarray(zxingcpp.write_barcode_to_image(code,size_hint=1400)));b=BytesIO();image.save(b,'PNG');return b.getvalue()
 def frame(data,rev,kind='license'):return {'data':{'revision':str(rev),'kind':kind},'files':{'frame':('camera.png',data,'image/png')}}
 def card(blur=0,offset=0):
-    image=Image.new('RGB',(1200,900),(35,45,55));d=ImageDraw.Draw(image);d.rounded_rectangle((200+offset,198,1000+offset,702),radius=20,fill=(210,215,220),outline='white',width=5);font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf',24) if Path('/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf').exists() else ImageFont.load_default(size=24)
+    image=Image.new('RGB',(1200,900),(35,45,55));d=ImageDraw.Draw(image);d.rounded_rectangle((200+offset,198,1000+offset,702),radius=20,fill=(210,215,220),outline='white',width=5);font=synthetic_font(24, family='mono', style='regular') if Path('/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf').exists() else ImageFont.load_default(size=24)
     for y in range(230,675,44):d.text((240+offset,y),'TEST DRIVER ID 1234 -- FICTIONAL',font=font,fill='black')
     if blur:image=image.filter(ImageFilter.GaussianBlur(blur))
     b=BytesIO();image.save(b,'JPEG');return b.getvalue()

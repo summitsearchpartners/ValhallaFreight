@@ -1,3 +1,4 @@
+from conftest import synthetic_font
 from pathlib import Path
 import pytest
 from test_manufacturer import setup,headers
@@ -86,7 +87,7 @@ def test_sparse_two_column_id_layout_extracts_without_guessing():
     from PIL import Image,ImageDraw,ImageFont
     from app.services.safe_load_images import license_evidence
     image=Image.new('RGB',(2000,850),'white');draw=ImageDraw.Draw(image)
-    font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf',40)
+    font=synthetic_font(40, family='mono', style='regular')
     for x,y,value in [(50,60,'TEST DOCUMENT - NOT VALID'),(50,210,'DL NUMBER: TEST1234'),(1100,210,'EXP: 01/01/2030'),(50,380,'LAST NAME: DOE'),(1100,380,'ISSUING STATE: KS'),(50,560,'FIRST NAME: JOHN')]:draw.text((x,y),value,fill='black',font=font)
     raw=BytesIO();image.save(raw,'JPEG');result=license_evidence(raw.getvalue())
     assert not result['errors'],result

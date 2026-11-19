@@ -1,4 +1,6 @@
 """Synthetic ID text/markers only; no real identity images."""
+from conftest import synthetic_font
+
 import io
 from pathlib import Path
 import pytest
@@ -14,7 +16,7 @@ from app.integrations.secrets import _fernet
 def card(angle=0,exif=False):
     image=Image.new('RGB',(1100,720),'white');draw=ImageDraw.Draw(image)
     draw.rectangle((0,0,65,65),fill=(240,10,10))
-    font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',34)
+    font=synthetic_font(34, family='sans', style='regular')
     lines=['KANSAS DRIVER LICENSE','DL NUMBER: TEST1234','FIRST NAME: JOHN','LAST NAME: DOE','ISSUING STATE: KS','EXP: 01/01/2030','RESTRICTIONS NONE','ENDORSEMENTS NONE']
     for i,line in enumerate(lines):draw.text((90,80+i*72),line,font=font,fill='black')
     image=image.rotate(angle,expand=True);buf=io.BytesIO()

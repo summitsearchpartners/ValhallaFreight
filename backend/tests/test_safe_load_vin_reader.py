@@ -1,4 +1,6 @@
 """Fictional VIN fixtures only; exact reading without assignment-driven corrections."""
+from conftest import synthetic_font
+
 import io
 import pytest
 from PIL import Image,ImageDraw,ImageFont
@@ -7,7 +9,7 @@ VIN='1HGCM82633A004352'
 
 def plate(background=False,angle=0,values=None):
     im=Image.new('RGB',(1300,1100) if background else (1300,220),(35,45,55))
-    d=ImageDraw.Draw(im);font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf',52)
+    d=ImageDraw.Draw(im);font=synthetic_font(52, family='mono', style='regular')
     if background:d.ellipse((100,80,480,460),fill='white')
     for i,value in enumerate(values or [VIN]):d.text((80,570+i*90 if background else 70+i*65),value,font=font,fill='white')
     b=io.BytesIO();im.rotate(angle,expand=True).save(b,'JPEG',quality=94);return b.getvalue()
@@ -36,7 +38,7 @@ def test_neural_reader_recovers_dirty_italic_label_locally():
     for _ in range(550):
         x,y=rng.randrange(1000),rng.randrange(300);radius=rng.randrange(1,4)
         d.ellipse((x,y,x+radius,y+radius),fill=(160,167,160))
-    font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Oblique.ttf',56)
+    font=synthetic_font(56, family='sans', style='oblique')
     d.text((100,110),VIN,font=font,fill=(244,248,242))
     b=io.BytesIO();im.save(b,'JPEG',quality=80)
     result=vehicle_evidence(b.getvalue())

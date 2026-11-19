@@ -9,7 +9,7 @@ def account(**changes):
 
 def test_role_selectors_and_superuser_create(setup):
     c,_=setup
-    assert [r['value'] for r in c.get('/api/v1/admin/users/roles',headers=headers(4)).json()]==['admin','manufacturer_admin','manufacturer','broker_admin','broker','customer','muse_admin']
+    assert [r['value'] for r in c.get('/api/v1/admin/users/roles',headers=headers(4)).json()]==['admin','manufacturer_admin','manufacturer','broker_admin','broker','customer','muse_admin','warehouse']
     for uid in [1,2,3,5,6,7]:
         assert c.get('/api/v1/admin/users',headers=headers(uid)).status_code==403
         assert c.post('/api/v1/admin/users',headers=headers(uid),json=account()).status_code==403
