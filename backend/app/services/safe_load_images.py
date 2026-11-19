@@ -335,8 +335,14 @@ def _numbered_name_pair(source):
 def _expiry_label_date(source):
     """Read explicitly labelled expiration dates, including OCR spacing noise."""
     values=set()
-    for line in source.upper().splitlines():
-        line=re.sub(r"\s+", " ", line)
+    lines=[re.sub(r"\s+", " ", line) for line in source.upper().splitlines()]
+    for index,line in enumerate(lines):
+        # OCR sometimes separates the tiny 4b EXP label and its date into
+        # adjacent text boxes. Only borrow the next line when it begins with
+        # the date; never scan past unrelated fields such as DOB or ISS.
+        if re.search(r"(?:\b4\s*[B8]\s*[.:]?\s*(?:EXP)?|\bEXP(?:IRATION|IRES)?\b)\s*$",line):
+            if index+1<len(lines) and re.match(r"^\s*[0-9OIl]{1,2}\s*[/.-]",lines[index+1]):
+                line=line+' '+lines[index+1]
         # Date must follow the printed expiration label, not DOB or issue date.
         for m in re.finditer(r"(?:\b4\s*[B8]\s*[.:]?\s*(?:EXP)?|\bEXP(?:IRATION|IRES)?\b)\s*[:.=-]?\s*([0-9OIl]{1,2}\s*[/.-]\s*[0-9OIl]{1,2}\s*[/.-]\s*[0-9OIl]{4})",line):
             raw=m.group(1).replace('O','0').replace('I','1').replace('L','1')
@@ -406,6 +412,57 @@ def _license_ocr_variants(raw):
         yield angle,output.getvalue()
 
 
+def _neural_license_candidates(raw, deadline_seconds=14):
+    """Offline RapidOCR ONNX front-card recognition, independent of Tesseract.
+
+    Use the same packaged CPU neural models as the VIN reader. Only extract
+    fields supported by explicit printed labels; never compare to assigned
+    driver details when extracting or silently authorize a shipment.
+    """
+    import numpy as np
+    from app.services.safe_load_vin_neural import _local_engine, _lock
+    start=time.monotonic()
+    image=ImageOps.exif_transpose(Image.open(io.BytesIO(raw))).convert('RGB')
+    image.thumbnail((2200,2200))
+    observations=[]
+    # Rotate only when necessary; preserve a time budget for normal requests.
+    variants=[(0,image),(180,image.rotate(180,expand=True)),
+              (90,image.rotate(90,expand=True)),(270,image.rotate(270,expand=True))]
+    for angle,variant in variants:
+        if time.monotonic()-start>deadline_seconds:break
+        try:
+            with _lock:
+                engine=_local_engine()
+                result,_=engine(np.asarray(variant)[:,:,::-1].copy())
+        except Exception as exc:
+            logging.getLogger(__name__).warning('Local neural license OCR unavailable: %s',type(exc).__name__)
+            break
+        lines=[]
+        for item in result or []:
+            try:
+                box,value,confidence=item
+                if float(confidence)<0.48:continue
+                y=sum(float(point[1]) for point in box)/len(box)
+                x=min(float(point[0]) for point in box)
+                lines.append((y,x,str(value).upper()))
+            except (ValueError,TypeError,IndexError,KeyError,ZeroDivisionError):continue
+        lines.sort(key=lambda item:(item[0],item[1]))
+        rows=[]
+        for y,x,value in lines:
+            if rows and abs(y-rows[-1][0])<=max(9,variant.height*.012):
+                rows[-1][1].append((x,value))
+            else:
+                rows.append([y,[(x,value)]])
+        recognized='\n'.join(' '.join(value for _,value in sorted(parts)) for _,parts in rows)
+        candidate=_supplement_front({},recognized)
+        score=sum(2 if candidate.get(key) else 0 for key in ('DAQ','DAC','DCS','DBA'))+bool(candidate.get('DAJ'))
+        observations.append((score,angle,candidate))
+        if all(candidate.get(key) for key in ('DAQ','DAC','DCS','DBA','DAJ')):break
+    if not observations:return {},0
+    _,angle,best=max(observations,key=lambda item:item[0])
+    return best,angle
+
+
 def _ocr_license_candidates(raw):
     """Time-bounded OCR: one normal pass plus one layout pass if incomplete."""
     deadline=time.monotonic()+16
@@ -450,13 +507,25 @@ def license_evidence(raw):
         if any(c!=codes[0] for c in codes):return {'fields':{},'source':'pdf417','errors':['Multiple different licenses found in the photo']}
         best=codes[0];source='pdf417'
     else:
-        source='local_ocr';best={};angle=0
-        if not _tesseract_executable():
-            return {'fields':{},'source':source,'errors':['Local Tesseract OCR is missing. Install the offline OCR engine and English language data; freight remains held for broker review.']}
-        best,angle=_ocr_license_candidates(raw)
+        source='local_neural_ocr';best={};angle=0
+        try:
+            best,angle=_neural_license_candidates(raw)
+        except (ImportError,OSError,ValueError) as exc:
+            logging.getLogger(__name__).warning('Neural license OCR failed: %s',type(exc).__name__)
+        if not all(best.get(k) for k in ('DAQ','DAC','DCS','DBA','DAJ')):
+            if _tesseract_executable():
+                fallback,old_angle=_ocr_license_candidates(raw)
+                # Do not combine fields from different card orientations.
+                if not best or old_angle==angle:
+                    best=_merge_front_fields(best,fallback)
+                elif sum(bool(v) for v in fallback.values())>sum(bool(v) for v in best.values()):
+                    best,angle=fallback,old_angle
+                source='local_neural_ocr+tesseract'
+            elif not best:
+                return {'fields':{},'source':source,'errors':['Both local OCR readers are unavailable. Freight remains held for broker review.']}
     labels={'DAQ':'License number','DAJ':'Issuing state','DAC':'First name','DCS':'Last name','DBA':'Expiration date'}
     errors=[name+' could not be read unambiguously from the onsite ID photo' for k,name in labels.items() if not best.get(k)]
-    return {'fields':best,'source':source,'errors':errors,'rotation_degrees':(360-angle)%360 if source=='local_ocr' else 0}
+    return {'fields':best,'source':source,'errors':errors,'rotation_degrees':(360-angle)%360 if source.startswith('local_') else 0}
 
 def license_data(raw):
     result=license_evidence(raw)
