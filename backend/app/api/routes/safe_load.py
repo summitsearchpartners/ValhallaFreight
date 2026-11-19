@@ -66,7 +66,7 @@ def view(db,row):
     return {'confirmation_number':receipt.confirmation_number if receipt else None,'shipment_status':ship.status,'rejection_id':rejected.id if rejected else None,'release_method':'broker_authorized' if released and released.action=='broker_authorized_release' else 'warehouse_verified','release_actor':released.actor if released else None,'can_photo_submit':bool(row.photo_path and row.status in {'pending_broker_review','awaiting_verification','verified','rejected'}),'shipment_id':row.shipment_id,'shipment_number':ship.shipment_number,'customer_id':row.customer_id,
         'carrier_name':carrier_name,'origin':ship.origin,'destination':ship.destination,'status':('pending_broker_review' if row.status in {'awaiting_verification','verified'} and not row.approved_by else 'awaiting_verification' if row.status=='verified' and row.verified_until and row.verified_until<datetime.utcnow() else row.status),'revision':row.revision,
         'driver_name':row.driver_name,'license_expires':row.license_expires.date().isoformat() if row.license_expires else None,'license_last4':row.license_last4,'issuing_state':row.issuing_state,'vin':row.vin,
-        'broker_contact':contact,'photo_review':{'id':attempt.id,'status':attempt.status,'reasons':attempt.reasons,'revision':attempt.revision,'extraction':extracted.summary if extracted else None} if attempt else None,'has_photo':bool(row.photo_path),'approved_by':row.approved_by,'verified_until':row.verified_until,'released_at':row.released_at,'released_by':row.released_by,
+        'rejection_reason':rejected.detail if rejected and row.status=='rejected' else None,'broker_contact':contact,'photo_review':{'id':attempt.id,'status':attempt.status,'reasons':attempt.reasons,'revision':attempt.revision,'extraction':extracted.summary if extracted else None} if attempt else None,'has_photo':bool(row.photo_path),'approved_by':row.approved_by,'verified_until':row.verified_until,'released_at':row.released_at,'released_by':row.released_by,
         'events':[{'id':e.id,'action':e.action,'actor':e.actor,'detail':e.detail,'created_at':e.created_at} for e in events]}
 
 @router.get('')
@@ -122,6 +122,28 @@ def carrier(db,token):
 def carrier_info(x_safe_load_token:str|None=Header(None),db:Session=Depends(get_db)):
     row=carrier(db,x_safe_load_token);s=db.get(Shipment,row.shipment_id)
     return {'shipment_number':s.shipment_number,'origin_zip':s.origin.get('postal_code'),'destination_zip':s.destination.get('postal_code'),'status':row.status}
+
+@router.post('/carrier/license-preview')
+async def carrier_license_preview(photo:UploadFile=File(...),x_safe_load_token:str|None=Header(None),db:Session=Depends(get_db)):
+    # A valid, unexpired load-specific invitation is required; never persist
+    # the uploaded image or extracted identity data during preview.
+    carrier(db,x_safe_load_token)
+    raw=await photo.read(8*1024*1024+1)
+    if len(raw)>8*1024*1024:raise HTTPException(413,'License photo must be under 8 MB')
+    from app.services.safe_load_images import normalize,license_evidence
+    try:
+        normalized=await asyncio.to_thread(normalize,raw)
+        evidence=await asyncio.to_thread(license_evidence,normalized)
+    except ValueError as e:raise HTTPException(422,str(e))
+    fields=evidence['fields']
+    def expiration(value):
+        if not value:return ''
+        for fmt in ('%Y%m%d','%m%d%Y','%m/%d/%Y','%Y-%m-%d'):
+            try:return datetime.strptime(value,fmt).date().isoformat()
+            except ValueError:pass
+        return ''
+    name=' '.join(part for part in (fields.get('DAC',''),fields.get('DAD',''),fields.get('DCS','')) if part and part.upper() not in {'NONE','NMN','UNKNOWN','UNK'})
+    return Response(json.dumps({'driver_name':name,'license_number':fields.get('DAQ',''),'issuing_state':fields.get('DAJ',''),'license_expires':expiration(fields.get('DBA','')),'source':evidence['source'],'warnings':evidence['errors']}),media_type='application/json',headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'})
 
 @router.post('/carrier')
 async def assignment(driver_name:str=Form(...),license_number:str=Form(...),issuing_state:str=Form(...),license_expires:str=Form(...),truck_vin:str=Form(...),photo:UploadFile=File(...),x_safe_load_token:str|None=Header(None),db:Session=Depends(get_db)):
